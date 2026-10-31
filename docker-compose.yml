@@ -21,6 +21,25 @@ services:
       - self-hosted
     restart: unless-stopped
 
+  # Bot challenge filter: nginx (TLS) → anubis → nginx :8080 (HTTP routing)
+  anubis:
+    image: ghcr.io/techarohq/anubis:latest
+    container_name: self-hosted-anubis
+    environment:
+      BIND: ":8923"
+      TARGET: "http://nginx:8080"
+      DIFFICULTY: "${ANUBIS_DIFFICULTY:-4}"
+      COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-true}"
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "anubis", "--healthcheck"]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 500ms
+
 networks:
   self-hosted:
     name: self-hosted
