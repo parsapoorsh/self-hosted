@@ -14,5 +14,5 @@ services:
       # Parallel threads for kiwix-serve (default: nproc inside the container)
       KIWIX_THREADS: ${KIWIX_THREADS:-}
     # Extra kiwix-serve flags only, e.g.:
-    #   command: ["--verbose"]
+    command: ["--urlRootLocation", "/kiwix"]
     restart: unless-stopped
