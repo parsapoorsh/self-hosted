@@ -21,6 +21,47 @@ services:
       - self-hosted
     restart: unless-stopped
 
+  # Bot challenge filter: nginx (TLS) → anubis → nginx :8080 (HTTP routing)
+  anubis:
+    image: ghcr.io/techarohq/anubis:latest
+    container_name: self-hosted-anubis
+    environment:
+      # Runtime only (not available in botPolicy.yaml)
+      BIND: ":8923"
+      # nginx backend HTTP routing
+      TARGET: "http://nginx:8080"
+      COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-true}"
+      POLICY_FNAME: "/data/cfg/botPolicy.yaml"
+    volumes:
+      - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "anubis", "--healthcheck"]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+      start_period: 500ms
+
+  kiwix:
+    build: ./kiwix
+    image: self-hosted-kiwix:local
+    container_name: kiwix-serve
+    volumes:
+      - ./kiwix/files:/zim:ro
+    environment:
+      KIWIX_PORT: ${KIWIX_PORT:-9393}
+      # Bind address for kiwix-serve -i/--address (empty = all interfaces)
+      KIWIX_HOST: ${KIWIX_HOST:-}
+      # Parallel threads for kiwix-serve (default: nproc inside the container)
+      KIWIX_THREADS: ${KIWIX_THREADS:-}
+    # Extra kiwix-serve flags only, e.g.:
+    command: ["--urlRootLocation", "/kiwix"]
+    networks:
+      - self-hosted
+    restart: unless-stopped
+
 networks:
   self-hosted:
     name: self-hosted
