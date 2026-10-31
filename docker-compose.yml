@@ -8,7 +8,7 @@ services:
     volumes:
       # Mount beside the image config so stock mime.types stay available
       - ./nginx:/etc/nginx/self-hosted:ro
-      - ./index:/usr/share/nginx/html:ro
+      - ./static:/usr/share/nginx/html:ro
       # LE-style tree: cert/<domain>/{fullchain,privkey}.pem — picked by SNI
       - ./cert:/etc/nginx/certs:ro
     command:
