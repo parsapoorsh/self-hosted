@@ -1,0 +1,23 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: self-hosted-nginx
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      # Mount beside the image config so stock mime.types stay available
+      - ./nginx:/etc/nginx/self-hosted:ro
+      - ./index:/usr/share/nginx/html:ro
+    command:
+      - nginx
+      - -g
+      - daemon off;
+      - -c
+      - /etc/nginx/self-hosted/nginx.conf
+    networks:
+      - self-hosted
+    restart: unless-stopped
+
+networks:
+  self-hosted:
+    name: self-hosted
