@@ -40,7 +40,9 @@ openssl req \
   -out "$WORK_DIR/ca.pem"
 
 openssl genrsa -out "$OUT_DIR/privkey.pem" "$KEY_BITS" 2>/dev/null
-chmod 600 "$OUT_DIR/privkey.pem"
+# 644 so the nginx container user can read the key from the mounted cert/ tree.
+# Host protection is the gitignored cert/ directory, not the file mode.
+chmod 644 "$OUT_DIR/privkey.pem"
 
 cat >"$WORK_DIR/leaf.cnf" <<EOF
 [req]
