@@ -4,11 +4,12 @@
 # Hosts:
 #   __DOMAIN__ / www.__DOMAIN__  landing (via Anubis)
 #   auth.__DOMAIN__              Keycloak at / (Anubis bypass)
+#   cloud.__DOMAIN__             Nextcloud at / (Anubis bypass — sync clients)
 #   kiwix.__DOMAIN__             Kiwix at / (via Anubis)
 #
 # TLS: cert/__DOMAIN__/{fullchain,privkey}.pem (apex + *.DOMAIN).
 #
-# Flow: client -> edge :443 -> (auth direct | others Anubis) -> backend :8080
+# Flow: client -> edge :443 -> (auth/cloud direct | others Anubis) -> backend :8080
 
 # --- edge: auth IdP (no Anubis; OIDC must stay clean) ---
 server {
@@ -36,6 +37,23 @@ server {
         proxy_busy_buffers_size 256k;
         proxy_read_timeout 60s;
     }
+}
+
+# --- edge: Nextcloud (no Anubis; desktop/mobile sync) ---
+# Static files + FastCGI to nextcloud:9000 (same nginx process, no sidecar).
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name cloud.__DOMAIN__;
+
+    ssl_certificate     /etc/nginx/certs/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/__DOMAIN__/privkey.pem;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+
+    client_max_body_size 16G;
+
+    include /etc/nginx/self-hosted/nextcloud.conf;
 }
 
 # --- edge: kiwix (Anubis) ---

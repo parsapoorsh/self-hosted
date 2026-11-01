@@ -19,6 +19,6 @@ esac
 
 sed "s/__DOMAIN__/${DOMAIN}/g" "$TEMPLATE" >"$RUNTIME_CONF"
 
-echo "nginx DOMAIN=${DOMAIN} (auth.${DOMAIN}, kiwix.${DOMAIN})"
+echo "nginx DOMAIN=${DOMAIN} (auth/kiwix/cloud.${DOMAIN})"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf

@@ -13,6 +13,8 @@ services:
       - ./static:/usr/share/nginx/html:ro
       # LE-style tree: cert/<DOMAIN>/{fullchain,privkey}.pem (SAN covers subdomains)
       - ./cert:/etc/nginx/certs:ro
+      # Same path as nextcloud FPM so SCRIPT_FILENAME resolves inside php-fpm
+      - nextcloud_html:/var/www/html:ro
     entrypoint: ["/bin/sh", "/etc/nginx/self-hosted/docker-entrypoint.sh"]
     networks:
       - self-hosted
@@ -20,6 +22,7 @@ services:
       - anubis
       - kiwix
       - keycloak
+      - nextcloud
     restart: unless-stopped
 
   # Bot challenge filter: nginx (TLS) -> anubis -> nginx :8080 (HTTP routing)
@@ -71,6 +74,7 @@ services:
       POSTGRES_DB: postgres
       # Consumed by postgres/init/*.sh on first empty volume only.
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -83,6 +87,48 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # Cache/queue for Nextcloud (and future apps if needed).
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Files / collab (PHP-FPM only). Edge nginx serves static + FastCGI.
+  # Public URL: https://cloud.${DOMAIN}/
+  nextcloud:
+    image: nextcloud:31-fpm
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+      REDIS_HOST: redis
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com}
+      OVERWRITEPROTOCOL: https
+      OVERWRITEHOST: cloud.${DOMAIN:-example.com}
+      OVERWRITECLIURL: https://cloud.${DOMAIN:-example.com}
+      # Edge nginx terminates TLS; trust docker private nets.
+      TRUSTED_PROXIES: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+    volumes:
+      - nextcloud_html:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    restart: unless-stopped
 
   # Shared IdP. Public URL: https://auth.${DOMAIN}/ (no path prefix)
   keycloak:
@@ -127,3 +173,4 @@ networks:
 
 volumes:
   postgres_data:
+  nextcloud_html:
