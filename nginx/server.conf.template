@@ -1,11 +1,11 @@
-# Domain injected at start (__DOMAIN__ -> DOMAIN, default example.com).
+# Domain injected at start (placeholder DOMAIN_NAME below, default example.com).
 #
 # Edge:
 #   ONE Anubis vhost for protected hosts (add names here when needed)
 #   Separate vhosts only for Anubis bypass (OIDC / sync clients)
 # Backend (:8080, Anubis TARGET): one server per app
 #
-# TLS: cert/__DOMAIN__/{fullchain,privkey}.pem (apex + *.DOMAIN)
+# TLS: cert/<domain>/{fullchain,privkey}.pem (apex + wildcard)
 
 # --- edge: Anubis (default) — list every protected host once ---
 server {
