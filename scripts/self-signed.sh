@@ -7,11 +7,15 @@
 #     fullchain.pem  leaf + chain
 #     privkey.pem    leaf private key
 #
+# SANs: apex + one-level wildcard (auth/kiwix/www/... under DOMAIN).
+#   DNS: <domain>
+#   DNS: *.<domain>
+#
 # Usage:
 #   ./scripts/self-signed.sh [domain]
 #   DOMAIN=example.com ./scripts/self-signed.sh
 #
-# Default domain is localhost (with 127.0.0.1 / ::1 SANs). Re-run to replace certs.
+# Default domain is example.com. Re-run to replace certs.
 
 set -euo pipefail
 
@@ -22,7 +26,7 @@ DAYS="${DAYS:-825}"
 # Ed25519 certs often hit SSL_ERROR_NO_CYPHER_OVERLAP in Firefox.
 EC_CURVE="${EC_CURVE:-P-256}"
 
-DOMAIN="${1:-${DOMAIN:-localhost}}"
+DOMAIN="${1:-${DOMAIN:-example.com}}"
 OUT_DIR="$CERT_ROOT/$DOMAIN"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -71,6 +75,7 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = $DOMAIN
+DNS.2 = *.$DOMAIN
 EOF
 
 if [[ "$DOMAIN" == "localhost" ]]; then

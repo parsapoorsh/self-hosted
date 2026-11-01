@@ -4,18 +4,16 @@ services:
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+    environment:
+      # Apex domain; subdomains auth./kiwix. are derived in nginx template.
+      DOMAIN: ${DOMAIN:-example.com}
     volumes:
       # Mount beside the image config so stock mime.types stay available
       - ./nginx:/etc/nginx/self-hosted:ro
       - ./static:/usr/share/nginx/html:ro
-      # LE-style tree: cert/<domain>/{fullchain,privkey}.pem - picked by SNI
+      # LE-style tree: cert/<DOMAIN>/{fullchain,privkey}.pem (SAN covers subdomains)
       - ./cert:/etc/nginx/certs:ro
-    command:
-      - nginx
-      - -g
-      - daemon off;
-      - -c
-      - /etc/nginx/self-hosted/nginx.conf
+    entrypoint: ["/bin/sh", "/etc/nginx/self-hosted/docker-entrypoint.sh"]
     networks:
       - self-hosted
     depends_on:
@@ -58,8 +56,7 @@ services:
       KIWIX_HOST: ${KIWIX_HOST:-}
       # Parallel threads for kiwix-serve (default: nproc inside the container)
       KIWIX_THREADS: ${KIWIX_THREADS:-}
-    # Extra kiwix-serve flags only, e.g.:
-    command: ["--urlRootLocation", "/kiwix"]
+    # Served at https://kiwix.${DOMAIN}/ (no path prefix)
     networks:
       - self-hosted
     restart: unless-stopped
@@ -87,7 +84,7 @@ services:
       retries: 10
       start_period: 10s
 
-  # Shared IdP for apps (OIDC/SAML). Public path: /auth (edge nginx, Anubis bypass).
+  # Shared IdP. Public URL: https://auth.${DOMAIN}/ (no path prefix)
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: ["start"]
@@ -99,11 +96,10 @@ services:
       # Bootstrap admin is only created on first empty DB.
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      # Path + public URL must match the nginx location and browser URL.
-      KC_HTTP_RELATIVE_PATH: /auth
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-https://localhost/auth}
+      # Override with KEYCLOAK_HOSTNAME if needed; default follows DOMAIN.
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-https://auth.${DOMAIN:-example.com}}
       KC_HOSTNAME_STRICT: "false"
       KC_HEALTH_ENABLED: "true"
     depends_on:
@@ -113,13 +109,12 @@ services:
       - self-hosted
     restart: unless-stopped
     # Health lives on the management port (not published).
-    # Relative path applies to management routes too (/auth/...).
     healthcheck:
       test:
         - CMD-SHELL
         - >-
           exec 3<>/dev/tcp/127.0.0.1/9000;
-          echo -e 'GET /auth/health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;
+          echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;
           cat <&3 | grep -q 'UP'
       interval: 10s
       timeout: 5s

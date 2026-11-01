@@ -1,0 +1,133 @@
+# Domain is injected at container start from DOMAIN (default example.com).
+# Placeholder __DOMAIN__ is replaced by nginx/docker-entrypoint.sh.
+#
+# Hosts:
+#   __DOMAIN__ / www.__DOMAIN__  landing (via Anubis)
+#   auth.__DOMAIN__              Keycloak at / (Anubis bypass)
+#   kiwix.__DOMAIN__             Kiwix at / (via Anubis)
+#
+# TLS: cert/__DOMAIN__/{fullchain,privkey}.pem (apex + *.DOMAIN).
+#
+# Flow: client -> edge :443 -> (auth direct | others Anubis) -> backend :8080
+
+# --- edge: auth IdP (no Anubis; OIDC must stay clean) ---
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name auth.__DOMAIN__;
+
+    ssl_certificate     /etc/nginx/certs/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/__DOMAIN__/privkey.pem;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+
+    location / {
+        set $keycloak_upstream http://keycloak:8080;
+        proxy_pass $keycloak_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Connection "";
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        proxy_read_timeout 60s;
+    }
+}
+
+# --- edge: kiwix (Anubis) ---
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name kiwix.__DOMAIN__;
+
+    ssl_certificate     /etc/nginx/certs/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/__DOMAIN__/privkey.pem;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+
+    location / {
+        set $anubis_upstream http://anubis:8923;
+        proxy_pass $anubis_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Http-Version $server_protocol;
+        proxy_set_header X-TLS-SNI-Name $ssl_server_name;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+}
+
+# --- edge: apex + www (Anubis) ---
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    server_name __DOMAIN__ www.__DOMAIN__;
+
+    ssl_certificate     /etc/nginx/certs/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/__DOMAIN__/privkey.pem;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+
+    location / {
+        set $anubis_upstream http://anubis:8923;
+        proxy_pass $anubis_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Http-Version $server_protocol;
+        proxy_set_header X-TLS-SNI-Name $ssl_server_name;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+}
+
+# --- backend: kiwix at / (Anubis TARGET) ---
+server {
+    listen 8080;
+    server_name kiwix.__DOMAIN__;
+
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Real-IP;
+
+    location / {
+        set $kiwix_upstream http://kiwix-serve:9393;
+        proxy_pass $kiwix_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+    }
+}
+
+# --- backend: landing (Anubis TARGET) ---
+server {
+    listen 8080 default_server;
+    server_name __DOMAIN__ www.__DOMAIN__;
+
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Real-IP;
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ =404;
+    }
+}
