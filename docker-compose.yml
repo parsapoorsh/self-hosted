@@ -13,8 +13,8 @@ services:
       - ./static:/usr/share/nginx/html:ro
       # LE-style tree: cert/<DOMAIN>/{fullchain,privkey}.pem (SAN covers subdomains)
       - ./cert:/etc/nginx/certs:ro
-      # Same path as nextcloud FPM so SCRIPT_FILENAME resolves inside php-fpm
-      - nextcloud_html:/var/www/html:ro
+      # App-specific path on edge (FPM still uses image default /var/www/html)
+      - nextcloud_html:/var/www/nextcloud:ro
     entrypoint: ["/bin/sh", "/etc/nginx/self-hosted/docker-entrypoint.sh"]
     networks:
       - self-hosted
