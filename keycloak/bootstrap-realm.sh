@@ -59,15 +59,16 @@ cat >"${CLIENT_JSON}" <<EOF
   "serviceAccountsEnabled": false,
   "fullScopeAllowed": true,
   "redirectUris": [
-    "${CLOUD_HTTP}/apps/user_oidc/code",
-    "${CLOUD_HTTP}/index.php/apps/user_oidc/code",
-    "${CLOUD_HTTPS}/apps/user_oidc/code",
-    "${CLOUD_HTTPS}/index.php/apps/user_oidc/code"
+    "${CLOUD_HTTP}/*",
+    "${CLOUD_HTTPS}/*"
   ],
   "webOrigins": [
     "${CLOUD_HTTP}",
     "${CLOUD_HTTPS}"
-  ]
+  ],
+  "attributes": {
+    "post.logout.redirect.uris": "${CLOUD_HTTP}/*##${CLOUD_HTTPS}/*"
+  }
 }
 EOF
 
