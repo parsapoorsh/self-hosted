@@ -21,6 +21,7 @@ services:
     depends_on:
       - anubis
       - kiwix
+      - keycloak
     restart: unless-stopped
 
   # Bot challenge filter: nginx (TLS) -> anubis -> nginx :8080 (HTTP routing)
@@ -63,6 +64,66 @@ services:
       - self-hosted
     restart: unless-stopped
 
+  # Shared IdP for apps (OIDC/SAML). Public path: /auth (edge nginx, Anubis bypass).
+  keycloak-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak_db:/var/lib/postgresql/data
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: ["start"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      # Bootstrap admin is only created on first empty DB.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Path + public URL must match the nginx location and browser URL.
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-https://localhost/auth}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    # Health lives on the management port (not published).
+    # Relative path applies to management routes too (/auth/...).
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000;
+          echo -e 'GET /auth/health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;
+          cat <&3 | grep -q 'UP'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+
 networks:
   self-hosted:
     name: self-hosted
+
+volumes:
+  keycloak_db:
