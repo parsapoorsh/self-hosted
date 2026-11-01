@@ -1,7 +1,6 @@
 services:
   nginx:
     image: nginx:alpine
-    container_name: self-hosted-nginx
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -27,7 +26,6 @@ services:
   # Bot challenge filter: nginx (TLS) -> anubis -> nginx :8080 (HTTP routing)
   anubis:
     image: ghcr.io/techarohq/anubis:latest
-    container_name: self-hosted-anubis
     environment:
       # Runtime only (not available in botPolicy.yaml)
       BIND: ":8923"
