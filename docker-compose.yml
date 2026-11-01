@@ -9,9 +9,9 @@ services:
       # Mount beside the image config so stock mime.types stay available
       - ./nginx:/etc/nginx/self-hosted:ro
       - ./static:/usr/share/nginx/html:ro
-      # LE-style tree: cert/<domain>/{fullchain,privkey}.pem — picked by SNI
+      # LE-style tree: cert/<domain>/{fullchain,privkey}.pem - picked by SNI
       - ./cert:/etc/nginx/certs:ro
-      # Shared with anubis: edge↔anubis and anubis↔backend over unix sockets
+      # Shared with anubis: edge <-> anubis <-> backend over unix sockets
       - sockets:/sockets
     # chmod so anubis (non-root) can create its listen socket beside backend.sock
     command:
@@ -22,7 +22,7 @@ services:
       - self-hosted
     restart: unless-stopped
 
-  # Bot challenge filter: nginx (TLS) ↔ anubis ↔ nginx backend (all unix sockets)
+  # Bot challenge filter: nginx (TLS) <-> anubis <-> nginx backend (all unix sockets)
   anubis:
     image: ghcr.io/techarohq/anubis:latest
     container_name: self-hosted-anubis
