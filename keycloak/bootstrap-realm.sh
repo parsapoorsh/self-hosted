@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent Keycloak realm + Nextcloud OIDC client + SSO user.
+# Idempotent Keycloak realm + Nextcloud OIDC client + admin user (home realm).
 set -euo pipefail
 
 KCADM=/opt/keycloak/bin/kcadm.sh
@@ -11,14 +11,10 @@ CLIENT_ID="${OIDC_CLIENT_ID:-nextcloud}"
 CLIENT_SECRET="${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET required}"
 SCHEME="${APP_SCHEME:-http}"
 DOMAIN="${DOMAIN:-example.com}"
-CLOUD_ORIGIN="${SCHEME}://cloud.${DOMAIN}"
 AUTH_ORIGIN="${SCHEME}://auth.${DOMAIN}"
 # Nextcloud sometimes emits https:// even on local http; allow both schemes.
 CLOUD_HTTP="http://cloud.${DOMAIN}"
 CLOUD_HTTPS="https://cloud.${DOMAIN}"
-SSO_USER="${SSO_USERNAME:-user}"
-SSO_PASS="${SSO_PASSWORD:?SSO_PASSWORD required}"
-SSO_EMAIL="${SSO_EMAIL:-user@localhost}"
 
 ${KCADM} config credentials \
   --server "${SERVER}" \
@@ -122,17 +118,22 @@ ensure_user() {
   ${KCADM} set-password -r "${REALM}" --userid "${user_id}" --new-password "${password}" >/dev/null
 }
 
-# Default SSO account (Nextcloud "Login with Keycloak").
-ensure_user "${SSO_USER}" "${SSO_PASS}" "${SSO_EMAIL}" "SSO" "User"
+# Same admin as master realm, in the app realm for Nextcloud OIDC login.
+ensure_user \
+  "${ADMIN_USER}" \
+  "${ADMIN_PASS}" \
+  "${ADMIN_USER}@${DOMAIN}" \
+  "Admin" \
+  "User"
 
-# Same admin as master realm, also in the app realm so OIDC login accepts it.
-if [[ -n "${ADMIN_USER}" && -n "${ADMIN_PASS}" ]]; then
-  ensure_user \
-    "${ADMIN_USER}" \
-    "${ADMIN_PASS}" \
-    "${ADMIN_USER}@${DOMAIN}" \
-    "Admin" \
-    "User"
+# Drop legacy default SSO account if it still exists from earlier boots.
+LEGACY_SSO_ID="$(
+  ${KCADM} get users -r "${REALM}" -q "username=user" --fields id --format csv --noquotes 2>/dev/null \
+    | head -n1 | tr -d '\r'
+)"
+if [[ -n "${LEGACY_SSO_ID}" && "${LEGACY_SSO_ID}" != "id" ]]; then
+  echo "keycloak-bootstrap: removing legacy SSO user 'user'"
+  ${KCADM} delete "users/${LEGACY_SSO_ID}" -r "${REALM}" >/dev/null || true
 fi
 
-echo "keycloak-bootstrap: done (realm=${REALM} client=${CLIENT_ID} sso_user=${SSO_USER} idp=${AUTH_ORIGIN})"
+echo "keycloak-bootstrap: done (realm=${REALM} client=${CLIENT_ID} admin=${ADMIN_USER} idp=${AUTH_ORIGIN})"

@@ -166,9 +166,6 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-home}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      SSO_USERNAME: ${SSO_USERNAME:-user}
-      SSO_PASSWORD: ${SSO_PASSWORD}
-      SSO_EMAIL: ${SSO_EMAIL:-user@localhost}
     volumes:
       - ./keycloak/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
       - ./keycloak/bootstrap-realm.sh:/init/bootstrap-realm.sh:ro
