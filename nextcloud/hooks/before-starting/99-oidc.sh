@@ -68,4 +68,10 @@ echo "oidc-hook: configuring provider '${PROVIDER_ID}'"
   >/dev/null
 
 "${OCC[@]}" config:app:set user_oidc allow_multiple_user_backends --value=1 >/dev/null
+# user_oidc blocks OIDC on plain HTTP unless this is set (local APP_SCHEME=http).
+if [[ "${SCHEME}" == "http" ]]; then
+  "${OCC[@]}" config:app:set user_oidc allow_insecure_http --value=1 --type=boolean >/dev/null
+else
+  "${OCC[@]}" config:app:delete user_oidc allow_insecure_http >/dev/null 2>&1 || true
+fi
 echo "oidc-hook: provider ready"
