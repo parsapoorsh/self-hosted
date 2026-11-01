@@ -20,6 +20,9 @@ services:
       - chmod 1777 /sockets && exec nginx -g 'daemon off;' -c /etc/nginx/self-hosted/nginx.conf
     networks:
       - self-hosted
+    depends_on:
+      - anubis
+      - kiwix
     restart: unless-stopped
 
   # Bot challenge filter: nginx (TLS) <-> anubis <-> nginx backend (all unix sockets)
@@ -39,8 +42,6 @@ services:
     volumes:
       - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
       - sockets:/sockets
-    depends_on:
-      - nginx
     networks:
       - self-hosted
     restart: unless-stopped
