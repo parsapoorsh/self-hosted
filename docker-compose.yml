@@ -11,25 +11,27 @@ services:
       - ./static:/usr/share/nginx/html:ro
       # LE-style tree: cert/<domain>/{fullchain,privkey}.pem — picked by SNI
       - ./cert:/etc/nginx/certs:ro
-      # Shared with anubis: backend HTTP over unix socket
+      # Shared with anubis: edge↔anubis and anubis↔backend over unix sockets
       - sockets:/sockets
+    # chmod so anubis (non-root) can create its listen socket beside backend.sock
     command:
-      - nginx
-      - -g
-      - daemon off;
+      - /bin/sh
       - -c
-      - /etc/nginx/self-hosted/nginx.conf
+      - chmod 1777 /sockets && exec nginx -g 'daemon off;' -c /etc/nginx/self-hosted/nginx.conf
     networks:
       - self-hosted
     restart: unless-stopped
 
-  # Bot challenge filter: nginx (TLS) → anubis → nginx unix socket (HTTP routing)
+  # Bot challenge filter: nginx (TLS) ↔ anubis ↔ nginx backend (all unix sockets)
   anubis:
     image: ghcr.io/techarohq/anubis:latest
     container_name: self-hosted-anubis
     environment:
       # Runtime only (not available in botPolicy.yaml)
-      BIND: ":8923"
+      BIND: "/sockets/anubis.sock"
+      BIND_NETWORK: unix
+      # nginx (different uid) must be able to connect
+      SOCKET_MODE: "0666"
       # nginx backend HTTP routing (unix socket shared volume)
       TARGET: "unix:///sockets/backend.sock"
       COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-true}"
@@ -43,6 +45,7 @@ services:
       - self-hosted
     restart: unless-stopped
     healthcheck:
+      # hits metrics :9090 (still TCP); main BIND is unix
       test: ["CMD", "anubis", "--healthcheck"]
       interval: 5s
       timeout: 30s
