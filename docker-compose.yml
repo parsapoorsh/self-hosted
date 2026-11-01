@@ -114,10 +114,10 @@ services:
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com}
-      OVERWRITEPROTOCOL: https
+      # Host only; protocol follows the browser (http or https) via X-Forwarded-Proto.
       OVERWRITEHOST: cloud.${DOMAIN:-example.com}
-      OVERWRITECLIURL: https://cloud.${DOMAIN:-example.com}
-      # Edge nginx terminates TLS; trust docker private nets.
+      OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-http://cloud.${DOMAIN:-example.com}}
+      # Edge nginx is the public proxy; trust docker private nets.
       TRUSTED_PROXIES: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
     volumes:
       - nextcloud_html:/var/www/html
@@ -144,8 +144,8 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
-      # Override with KEYCLOAK_HOSTNAME if needed; default follows DOMAIN.
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-https://auth.${DOMAIN:-example.com}}
+      # Override with KEYCLOAK_HOSTNAME if needed; default follows DOMAIN (http for local).
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://auth.${DOMAIN:-example.com}}
       KC_HOSTNAME_STRICT: "false"
       KC_HEALTH_ENABLED: "true"
     depends_on:
