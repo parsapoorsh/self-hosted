@@ -1,13 +1,10 @@
 #!/bin/sh
-# Render server.conf from template (DOMAIN -> __DOMAIN__) then start nginx.
+# Render templates (__DOMAIN__ -> DOMAIN) then start nginx.
 set -eu
 
 DOMAIN="${DOMAIN:-example.com}"
-TEMPLATE="/etc/nginx/self-hosted/server.conf.template"
-RUNTIME_DIR="/etc/nginx/self-hosted-runtime"
-RUNTIME_CONF="${RUNTIME_DIR}/server.conf"
-
-mkdir -p "$RUNTIME_DIR"
+SRC="/etc/nginx/self-hosted"
+RUNTIME="/etc/nginx/self-hosted-runtime"
 
 # Avoid sed specials in domain: only allow simple DNS labels.
 case "$DOMAIN" in
@@ -17,7 +14,15 @@ case "$DOMAIN" in
     ;;
 esac
 
-sed "s/__DOMAIN__/${DOMAIN}/g" "$TEMPLATE" >"$RUNTIME_CONF"
+mkdir -p "$RUNTIME/snippets"
+
+# Any *.conf under snippets that still contains __DOMAIN__ is rendered;
+# static snippets are included straight from $SRC/snippets/.
+sed "s/__DOMAIN__/${DOMAIN}/g" \
+  "$SRC/snippets/edge-tls.conf" >"$RUNTIME/snippets/edge-tls.conf"
+
+sed "s/__DOMAIN__/${DOMAIN}/g" \
+  "$SRC/server.conf.template" >"$RUNTIME/server.conf"
 
 echo "nginx DOMAIN=${DOMAIN} (auth/kiwix/cloud.${DOMAIN})"
 
