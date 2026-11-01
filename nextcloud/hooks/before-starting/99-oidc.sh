@@ -31,7 +31,8 @@ fi
 "${OCC[@]}" config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null
 "${OCC[@]}" config:system:set overwritehost --value="cloud.${DOMAIN}" >/dev/null
 "${OCC[@]}" config:system:set overwrite.cli.url --value="${SCHEME}://cloud.${DOMAIN}" >/dev/null
-"${OCC[@]}" config:system:delete overwriteprotocol >/dev/null 2>&1 || true
+# Pin public URL scheme so OIDC redirect_uri matches Keycloak (and APP_SCHEME).
+"${OCC[@]}" config:system:set overwriteprotocol --value="${SCHEME}" >/dev/null
 
 if ! "${OCC[@]}" app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   echo "oidc-hook: installing user_oidc"

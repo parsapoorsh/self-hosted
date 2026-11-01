@@ -13,6 +13,9 @@ SCHEME="${APP_SCHEME:-http}"
 DOMAIN="${DOMAIN:-example.com}"
 CLOUD_ORIGIN="${SCHEME}://cloud.${DOMAIN}"
 AUTH_ORIGIN="${SCHEME}://auth.${DOMAIN}"
+# Nextcloud sometimes emits https:// even on local http; allow both schemes.
+CLOUD_HTTP="http://cloud.${DOMAIN}"
+CLOUD_HTTPS="https://cloud.${DOMAIN}"
 SSO_USER="${SSO_USERNAME:-user}"
 SSO_PASS="${SSO_PASSWORD:?SSO_PASSWORD required}"
 SSO_EMAIL="${SSO_EMAIL:-user@localhost}"
@@ -44,37 +47,40 @@ CLIENT_UUID="$(
     | head -n1 | tr -d '\r'
 )"
 
-REDIRECT_1="${CLOUD_ORIGIN}/apps/user_oidc/code"
-REDIRECT_2="${CLOUD_ORIGIN}/index.php/apps/user_oidc/code"
+# kcadm -s drops multi-value JSON arrays; write a client body file instead.
+CLIENT_JSON="$(mktemp)"
+trap 'rm -f "${CLIENT_JSON}"' EXIT
+cat >"${CLIENT_JSON}" <<EOF
+{
+  "clientId": "${CLIENT_ID}",
+  "enabled": true,
+  "publicClient": false,
+  "secret": "${CLIENT_SECRET}",
+  "clientAuthenticatorType": "client-secret",
+  "protocol": "openid-connect",
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": true,
+  "serviceAccountsEnabled": false,
+  "fullScopeAllowed": true,
+  "redirectUris": [
+    "${CLOUD_HTTP}/apps/user_oidc/code",
+    "${CLOUD_HTTP}/index.php/apps/user_oidc/code",
+    "${CLOUD_HTTPS}/apps/user_oidc/code",
+    "${CLOUD_HTTPS}/index.php/apps/user_oidc/code"
+  ],
+  "webOrigins": [
+    "${CLOUD_HTTP}",
+    "${CLOUD_HTTPS}"
+  ]
+}
+EOF
 
 if [[ -n "${CLIENT_UUID}" && "${CLIENT_UUID}" != "id" ]]; then
   echo "keycloak-bootstrap: updating client '${CLIENT_ID}'"
-  ${KCADM} update "clients/${CLIENT_UUID}" -r "${REALM}" \
-    -s "secret=${CLIENT_SECRET}" \
-    -s enabled=true \
-    -s publicClient=false \
-    -s clientAuthenticatorType=client-secret \
-    -s standardFlowEnabled=true \
-    -s directAccessGrantsEnabled=true \
-    -s serviceAccountsEnabled=false \
-    -s fullScopeAllowed=true \
-    -s "redirectUris=[\"${REDIRECT_1}\",\"${REDIRECT_2}\"]" \
-    -s "webOrigins=[\"${CLOUD_ORIGIN}\"]"
+  ${KCADM} update "clients/${CLIENT_UUID}" -r "${REALM}" -f "${CLIENT_JSON}"
 else
   echo "keycloak-bootstrap: creating client '${CLIENT_ID}'"
-  ${KCADM} create clients -r "${REALM}" \
-    -s "clientId=${CLIENT_ID}" \
-    -s "secret=${CLIENT_SECRET}" \
-    -s enabled=true \
-    -s publicClient=false \
-    -s clientAuthenticatorType=client-secret \
-    -s protocol=openid-connect \
-    -s standardFlowEnabled=true \
-    -s directAccessGrantsEnabled=true \
-    -s serviceAccountsEnabled=false \
-    -s fullScopeAllowed=true \
-    -s "redirectUris=[\"${REDIRECT_1}\",\"${REDIRECT_2}\"]" \
-    -s "webOrigins=[\"${CLOUD_ORIGIN}\"]"
+  ${KCADM} create clients -r "${REALM}" -f "${CLIENT_JSON}"
 fi
 
 USER_ID="$(
