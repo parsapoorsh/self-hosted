@@ -18,8 +18,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CERT_ROOT="${CERT_ROOT:-$ROOT_DIR/cert}"
 DAYS="${DAYS:-825}"
-# Ed25519 (EdDSA on Curve25519). Override only if you need another genpkey algorithm.
-KEY_ALG="${KEY_ALG:-Ed25519}"
+# ECDSA P-256 (prime256v1). Browsers/nginx share cipher suites for this;
+# Ed25519 certs often hit SSL_ERROR_NO_CYPHER_OVERLAP in Firefox.
+EC_CURVE="${EC_CURVE:-P-256}"
 
 DOMAIN="${1:-${DOMAIN:-localhost}}"
 OUT_DIR="$CERT_ROOT/$DOMAIN"
@@ -28,18 +29,26 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 mkdir -p "$OUT_DIR"
 
+gen_ec_key() {
+  openssl genpkey \
+    -algorithm EC \
+    -pkeyopt "ec_paramgen_curve:$EC_CURVE" \
+    -out "$1" 2>/dev/null
+}
+
 # Local CA so chain.pem / fullchain.pem match a real LE-style layout.
-openssl genpkey -algorithm "$KEY_ALG" -out "$WORK_DIR/ca.key" 2>/dev/null
+gen_ec_key "$WORK_DIR/ca.key"
 openssl req \
   -x509 \
   -new \
   -nodes \
   -key "$WORK_DIR/ca.key" \
+  -sha256 \
   -days "$DAYS" \
   -subj "/CN=self-hosted local CA" \
   -out "$WORK_DIR/ca.pem"
 
-openssl genpkey -algorithm "$KEY_ALG" -out "$OUT_DIR/privkey.pem" 2>/dev/null
+gen_ec_key "$OUT_DIR/privkey.pem"
 # 644 so the nginx container user can read the key from the mounted cert/ tree.
 # Host protection is the gitignored cert/ directory, not the file mode.
 chmod 644 "$OUT_DIR/privkey.pem"
@@ -55,7 +64,7 @@ CN = $DOMAIN
 
 [v3_req]
 basicConstraints = CA:FALSE
-# digitalSignature only: Ed25519/ECDSA are signing keys (no keyEncipherment)
+# digitalSignature only: ECDSA is a signing key (no keyEncipherment)
 keyUsage = digitalSignature
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
@@ -85,6 +94,7 @@ openssl x509 \
   -CAcreateserial \
   -out "$OUT_DIR/cert.pem" \
   -days "$DAYS" \
+  -sha256 \
   -extfile "$WORK_DIR/leaf.cnf" \
   -extensions v3_req
 
