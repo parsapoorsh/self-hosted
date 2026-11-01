@@ -104,7 +104,7 @@ services:
   # Files / collab (PHP-FPM only). Edge nginx serves static + FastCGI.
   # Public URL: https://cloud.${DOMAIN}/
   nextcloud:
-    image: nextcloud:31-fpm
+    image: nextcloud:35-fpm
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_DB: nextcloud
