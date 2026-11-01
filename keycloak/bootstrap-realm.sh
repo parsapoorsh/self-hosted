@@ -83,33 +83,56 @@ else
   ${KCADM} create clients -r "${REALM}" -f "${CLIENT_JSON}"
 fi
 
-USER_ID="$(
-  ${KCADM} get users -r "${REALM}" -q "username=${SSO_USER}" --fields id --format csv --noquotes 2>/dev/null \
-    | head -n1 | tr -d '\r'
-)"
+ensure_user() {
+  local username="$1"
+  local password="$2"
+  local email="$3"
+  local first="$4"
+  local last="$5"
+  local user_id
 
-if [[ -n "${USER_ID}" && "${USER_ID}" != "id" ]]; then
-  echo "keycloak-bootstrap: user '${SSO_USER}' exists"
-  ${KCADM} update "users/${USER_ID}" -r "${REALM}" \
-    -s enabled=true \
-    -s "email=${SSO_EMAIL}" \
-    -s emailVerified=true \
-    -s "firstName=SSO" \
-    -s "lastName=User" >/dev/null
-else
-  echo "keycloak-bootstrap: creating user '${SSO_USER}'"
-  ${KCADM} create users -r "${REALM}" \
-    -s "username=${SSO_USER}" \
-    -s enabled=true \
-    -s "email=${SSO_EMAIL}" \
-    -s emailVerified=true \
-    -s "firstName=SSO" \
-    -s "lastName=User"
-  USER_ID="$(
-    ${KCADM} get users -r "${REALM}" -q "username=${SSO_USER}" --fields id --format csv --noquotes \
+  user_id="$(
+    ${KCADM} get users -r "${REALM}" -q "username=${username}" --fields id --format csv --noquotes 2>/dev/null \
       | head -n1 | tr -d '\r'
   )"
+
+  if [[ -n "${user_id}" && "${user_id}" != "id" ]]; then
+    echo "keycloak-bootstrap: user '${username}' exists"
+    ${KCADM} update "users/${user_id}" -r "${REALM}" \
+      -s enabled=true \
+      -s "email=${email}" \
+      -s emailVerified=true \
+      -s "firstName=${first}" \
+      -s "lastName=${last}" >/dev/null
+  else
+    echo "keycloak-bootstrap: creating user '${username}'"
+    ${KCADM} create users -r "${REALM}" \
+      -s "username=${username}" \
+      -s enabled=true \
+      -s "email=${email}" \
+      -s emailVerified=true \
+      -s "firstName=${first}" \
+      -s "lastName=${last}"
+    user_id="$(
+      ${KCADM} get users -r "${REALM}" -q "username=${username}" --fields id --format csv --noquotes \
+        | head -n1 | tr -d '\r'
+    )"
+  fi
+
+  ${KCADM} set-password -r "${REALM}" --userid "${user_id}" --new-password "${password}" >/dev/null
+}
+
+# Default SSO account (Nextcloud "Login with Keycloak").
+ensure_user "${SSO_USER}" "${SSO_PASS}" "${SSO_EMAIL}" "SSO" "User"
+
+# Same admin as master realm, also in the app realm so OIDC login accepts it.
+if [[ -n "${ADMIN_USER}" && -n "${ADMIN_PASS}" ]]; then
+  ensure_user \
+    "${ADMIN_USER}" \
+    "${ADMIN_PASS}" \
+    "${ADMIN_USER}@${DOMAIN}" \
+    "Admin" \
+    "User"
 fi
 
-${KCADM} set-password -r "${REALM}" --userid "${USER_ID}" --new-password "${SSO_PASS}" >/dev/null
 echo "keycloak-bootstrap: done (realm=${REALM} client=${CLIENT_ID} sso_user=${SSO_USER} idp=${AUTH_ORIGIN})"
