@@ -18,7 +18,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CERT_ROOT="${CERT_ROOT:-$ROOT_DIR/cert}"
 DAYS="${DAYS:-825}"
-KEY_BITS="${KEY_BITS:-4096}"
+# Ed25519 (EdDSA on Curve25519). Override only if you need another genpkey algorithm.
+KEY_ALG="${KEY_ALG:-Ed25519}"
 
 DOMAIN="${1:-${DOMAIN:-localhost}}"
 OUT_DIR="$CERT_ROOT/$DOMAIN"
@@ -28,18 +29,17 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 mkdir -p "$OUT_DIR"
 
 # Local CA so chain.pem / fullchain.pem match a real LE-style layout.
-openssl genrsa -out "$WORK_DIR/ca.key" "$KEY_BITS" 2>/dev/null
+openssl genpkey -algorithm "$KEY_ALG" -out "$WORK_DIR/ca.key" 2>/dev/null
 openssl req \
   -x509 \
   -new \
   -nodes \
   -key "$WORK_DIR/ca.key" \
-  -sha256 \
   -days "$DAYS" \
   -subj "/CN=self-hosted local CA" \
   -out "$WORK_DIR/ca.pem"
 
-openssl genrsa -out "$OUT_DIR/privkey.pem" "$KEY_BITS" 2>/dev/null
+openssl genpkey -algorithm "$KEY_ALG" -out "$OUT_DIR/privkey.pem" 2>/dev/null
 # 644 so the nginx container user can read the key from the mounted cert/ tree.
 # Host protection is the gitignored cert/ directory, not the file mode.
 chmod 644 "$OUT_DIR/privkey.pem"
@@ -55,7 +55,8 @@ CN = $DOMAIN
 
 [v3_req]
 basicConstraints = CA:FALSE
-keyUsage = digitalSignature, keyEncipherment
+# digitalSignature only: Ed25519/ECDSA are signing keys (no keyEncipherment)
+keyUsage = digitalSignature
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
@@ -84,7 +85,6 @@ openssl x509 \
   -CAcreateserial \
   -out "$OUT_DIR/cert.pem" \
   -days "$DAYS" \
-  -sha256 \
   -extfile "$WORK_DIR/leaf.cnf" \
   -extensions v3_req
 
