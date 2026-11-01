@@ -58,8 +58,14 @@ cat >"${CLIENT_JSON}" <<EOF
   "directAccessGrantsEnabled": true,
   "serviceAccountsEnabled": false,
   "fullScopeAllowed": true,
+  "rootUrl": "${CLOUD_HTTP}",
+  "baseUrl": "/",
   "redirectUris": [
+    "${CLOUD_HTTP}",
+    "${CLOUD_HTTP}/",
     "${CLOUD_HTTP}/*",
+    "${CLOUD_HTTPS}",
+    "${CLOUD_HTTPS}/",
     "${CLOUD_HTTPS}/*"
   ],
   "webOrigins": [
@@ -67,7 +73,7 @@ cat >"${CLIENT_JSON}" <<EOF
     "${CLOUD_HTTPS}"
   ],
   "attributes": {
-    "post.logout.redirect.uris": "${CLOUD_HTTP}/*##${CLOUD_HTTPS}/*"
+    "post.logout.redirect.uris": "${CLOUD_HTTP}##${CLOUD_HTTP}/##${CLOUD_HTTP}/*##${CLOUD_HTTPS}##${CLOUD_HTTPS}/##${CLOUD_HTTPS}/*"
   }
 }
 EOF
@@ -79,6 +85,23 @@ else
   echo "keycloak-bootstrap: creating client '${CLIENT_ID}'"
   ${KCADM} create clients -r "${REALM}" -f "${CLIENT_JSON}"
 fi
+
+# kcadm -f sometimes drops attributes; set post-logout URIs explicitly.
+CLIENT_UUID="$(
+  ${KCADM} get clients -r "${REALM}" -q "clientId=${CLIENT_ID}" --fields id --format csv --noquotes 2>/dev/null \
+    | head -n1 | tr -d '\r'
+)"
+ATTR_JSON="$(mktemp)"
+cat >"${ATTR_JSON}" <<EOF
+{
+  "attributes": {
+    "post.logout.redirect.uris": "${CLOUD_HTTP}##${CLOUD_HTTP}/##${CLOUD_HTTP}/*##${CLOUD_HTTPS}##${CLOUD_HTTPS}/##${CLOUD_HTTPS}/*",
+    "backchannel.logout.session.required": "true"
+  }
+}
+EOF
+${KCADM} update "clients/${CLIENT_UUID}" -r "${REALM}" -f "${ATTR_JSON}" >/dev/null
+rm -f "${ATTR_JSON}"
 
 ensure_user() {
   local username="$1"
