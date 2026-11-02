@@ -195,19 +195,27 @@ services:
       start_period: 90s
 
   # Artifact registry. Public URL: ${APP_SCHEME}://nexus.${DOMAIN}/
-  # No default repos (skipDefaultRepositories). UI SSO: Keycloak via oauth2-proxy + Rut Auth.
+  # No default repos. UI SSO: Keycloak via oauth2-proxy + Rut Auth.
+  # Admin password / Rut Auth / repo cleanup: nexus/bootstrap.sh (background on start).
   nexus:
     image: sonatype/nexus3:3.76.0
+    entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
     environment:
-      # Skip sample repos; allow one-shot Groovy for Rut Auth bootstrap; modest heap.
+      # Skip sample repos; allow Groovy for Rut Auth bootstrap; modest heap.
       INSTALL4J_ADD_VM_PARAMS: >-
         -Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g
         -Dnexus.skipDefaultRepositories=true
         -Dnexus.scripts.allowCreation=true
         -Djava.util.prefs.userRoot=/nexus-data/javaprefs
       NEXUS_CONTEXT_PATH: /
+      # bootstrap.sh (same pattern as keycloak/bootstrap-realm.sh)
+      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
+      NEXUS_ADMIN_PASSWORD: ${NEXUS_ADMIN_PASSWORD}
+      NEXUS_RUT_HEADER: X-Remote-User
     volumes:
       - nexus_data:/nexus-data
+      - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - ./nexus/bootstrap.sh:/init/bootstrap.sh:ro
     networks:
       - self-hosted
     restart: unless-stopped
@@ -223,32 +231,6 @@ services:
       timeout: 10s
       retries: 20
       start_period: 180s
-
-  # Sets admin password, Rut Auth header, realms; deletes any leftover default repos.
-  nexus-bootstrap:
-    image: alpine:3.21
-    environment:
-      NEXUS_URL: http://nexus:8081
-      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
-      NEXUS_ADMIN_PASSWORD: ${NEXUS_ADMIN_PASSWORD}
-      NEXUS_DATA_DIR: /nexus-data
-      NEXUS_RUT_HEADER: X-Remote-User
-    volumes:
-      - ./nexus/bootstrap.sh:/bootstrap/bootstrap.sh:ro
-      - nexus_data:/nexus-data:ro
-    # Alpine /bin/sh is ash (no arrays); script needs bash + curl + jq.
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        apk add --no-cache bash curl jq >/dev/null
-        exec bash /bootstrap/bootstrap.sh
-    depends_on:
-      nexus:
-        condition: service_healthy
-    networks:
-      - self-hosted
-    restart: unless-stopped
 
   # Keycloak OIDC front for Nexus UI (nginx auth_request). Package APIs skip this.
   # Discovery is skipped: browser auth uses auth.<DOMAIN>, token/jwks use keycloak:8080

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Idempotent Nexus bootstrap: admin password, Rut Auth (Keycloak via proxy),
-# drop default repositories. Retries until configured, then re-applies hourly.
+# drop default repositories. Runs once from docker-entrypoint background job.
 #
 # Rut Auth capability is created via Groovy (OSS has no Capabilities REST API).
 # Requires nexus.scripts.allowCreation=true (set in compose JVM opts).
 set -euo pipefail
 
-NEXUS_URL="${NEXUS_URL:-http://nexus:8081}"
+NEXUS_URL="${NEXUS_URL:-http://127.0.0.1:8081}"
 ADMIN_USER="${NEXUS_ADMIN_USER:-admin}"
 ADMIN_PASS="${NEXUS_ADMIN_PASSWORD:?NEXUS_ADMIN_PASSWORD required}"
 DATA_DIR="${NEXUS_DATA_DIR:-/nexus-data}"
@@ -18,17 +18,6 @@ DEFAULT_REPOS="maven-central maven-public maven-releases maven-snapshots nuget-g
 
 log() {
   echo "nexus-bootstrap: $*"
-}
-
-need_tools() {
-  if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-    if command -v apk >/dev/null 2>&1; then
-      apk add --no-cache curl jq >/dev/null
-    else
-      log "curl and jq are required" >&2
-      exit 1
-    fi
-  fi
 }
 
 curl_auth() {
@@ -50,7 +39,7 @@ auth_ok() {
 wait_nexus() {
   local i
   log "waiting for ${NEXUS_URL}"
-  for i in $(seq 1 120); do
+  for i in $(seq 1 60); do
     if curl -sS -f -o /dev/null "${NEXUS_URL}/service/rest/v1/status" 2>/dev/null; then
       log "nexus is up (try ${i})"
       return 0
@@ -82,7 +71,6 @@ resolve_admin_pass() {
       --data-binary "${ADMIN_PASS}" \
       "${NEXUS_URL}/service/rest/v1/security/users/${ADMIN_USER}/change-password" \
       >/dev/null
-    # Confirm new password before continuing.
     if ! auth_ok "${ADMIN_USER}" "${ADMIN_PASS}"; then
       log "password change did not stick"
       return 1
@@ -93,6 +81,19 @@ resolve_admin_pass() {
 
   log "no working admin credentials yet"
   return 1
+}
+
+json_script_body() {
+  local name="$1"
+  local content="$2"
+  HEADER_NAME="${HEADER_NAME}" SCRIPT_NAME="${name}" GROOVY="${content}" python3 - <<'PY'
+import json, os
+print(json.dumps({
+    "name": os.environ["SCRIPT_NAME"],
+    "type": "groovy",
+    "content": os.environ["GROOVY"],
+}))
+PY
 }
 
 ensure_rut_capability() {
@@ -116,12 +117,8 @@ return "created:" + ref.context().id()
 EOF
 )"
 
-  body="$(jq -n \
-    --arg name "${SCRIPT_NAME}" \
-    --arg content "${groovy}" \
-    '{name: $name, type: "groovy", content: $content}')"
+  body="$(json_script_body "${SCRIPT_NAME}" "${groovy}")"
 
-  # Replace any previous script definition.
   curl -sS -o /dev/null -w "" -u "${ADMIN_USER}:${pass}" \
     -X DELETE \
     "${NEXUS_URL}/service/rest/v1/script/${SCRIPT_NAME}" 2>/dev/null || true
@@ -141,9 +138,8 @@ EOF
     -H "Content-Type: text/plain" \
     -H "Accept: application/json" \
     "${NEXUS_URL}/service/rest/v1/script/${SCRIPT_NAME}/run")"
-  log "rutauth script result: $(printf '%s' "${result}" | jq -r '.result // .')"
+  log "rutauth script result: $(printf '%s' "${result}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("result", d))')"
 
-  # Script not needed after apply.
   curl -sS -o /dev/null -w "" -u "${ADMIN_USER}:${pass}" \
     -X DELETE \
     "${NEXUS_URL}/service/rest/v1/script/${SCRIPT_NAME}" 2>/dev/null || true
@@ -152,7 +148,6 @@ EOF
 ensure_realms() {
   local pass="$1"
   # Rut first so reverse-proxy identity wins for browser SSO; local for API basic auth.
-  # NexusAuthorizingRealm is not a separate id on current OSS builds.
   log "setting active realms"
   curl_auth "${ADMIN_USER}" "${pass}" \
     -X PUT \
@@ -206,17 +201,11 @@ configure() {
   log "done (admin=${ADMIN_USER} rut=${HEADER_NAME})"
 }
 
-need_tools
-
+# Retry until success, then exit (background job under entrypoint).
 while true; do
   if configure; then
-    break
+    exit 0
   fi
   log "retry in 15s"
   sleep 15
-done
-
-while true; do
-  sleep 3600
-  configure || true
 done
