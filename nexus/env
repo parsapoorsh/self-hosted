@@ -1,7 +1,6 @@
-# Nexus Repository constants (admin password from root .env).
+# Nexus Repository constants (human admin from KEYCLOAK_ADMIN_* via .env.secrets).
 NEXUS_CONTEXT_PATH=/
 NEXUS_RUT_HEADER=X-Remote-User
-NEXUS_ADMIN_USER=admin
 # Skip sample repos; allow Groovy for Rut Auth bootstrap; modest heap.
 # upload.url points base telemetry at the loopback sink; loader.path shadows
 # CE usage-limit classes with the patched copies built by docker-entrypoint.sh.

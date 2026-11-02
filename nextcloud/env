@@ -1,8 +1,9 @@
-# Nextcloud constants (secrets + DOMAIN from root .env / compose).
+# Nextcloud constants (human admin + secrets from root .env / .env.secrets).
 POSTGRES_HOST=postgres
 POSTGRES_DB=nextcloud
 POSTGRES_USER=nextcloud
 REDIS_HOST=redis
 TRUSTED_PROXIES=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
 OIDC_PROVIDER_ID=Keycloak
-NEXTCLOUD_ADMIN_USER=admin
+OIDC_CLIENT_ID=nextcloud
+KEYCLOAK_REALM=home

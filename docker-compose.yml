@@ -1,5 +1,6 @@
 # Service constants live in each service dir as `env` (or `*.env`).
-# Secrets and host-wide settings live in the project root `.env`.
+# Human settings in `.env`; derived internal secrets in `.env.secrets`
+# (run `./scripts/sync-secrets.sh` or `./scripts/compose.sh ...`).
 services:
   nginx:
     image: nginx:alpine
@@ -66,7 +67,7 @@ services:
       - ./postgres/env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # postgres/init on first empty volume
+      # postgres/init on first empty volume (from .env.secrets)
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
@@ -100,8 +101,9 @@ services:
       - ./nextcloud/env
     environment:
       POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
-      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
-      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      # Same human admin as Keycloak
+      NEXTCLOUD_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com}
       OVERWRITEHOST: cloud.${DOMAIN:-example.com}
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-${APP_SCHEME:-http}://cloud.${DOMAIN:-example.com}}
@@ -132,9 +134,9 @@ services:
       - ./keycloak/env
     environment:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      # Temporary first-boot only; bootstrap creates permanent KEYCLOAK_ADMIN
+      KC_BOOTSTRAP_ADMIN_USERNAME: bootstrap-admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      # bootstrap-realm.sh
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
@@ -174,8 +176,9 @@ services:
     env_file:
       - ./nexus/env
     environment:
-      NEXUS_ADMIN_PASSWORD: ${NEXUS_ADMIN_PASSWORD}
-      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
+      # Same human admin as Keycloak (local API + Rut Auth username)
+      NEXUS_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
+      NEXUS_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     volumes:
       - nexus_data:/nexus-data
       - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
@@ -199,7 +202,7 @@ services:
       retries: 20
       start_period: 180s
 
-  # Nexus UI SSO for nexus.<DOMAIN>
+  # Nexus UI SSO for nexus.<DOMAIN> (Keycloak OIDC via oauth2-proxy + Rut Auth)
   nexus-oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
     env_file:
