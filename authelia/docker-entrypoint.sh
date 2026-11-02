@@ -83,10 +83,19 @@ indent_pem() {
   sed 's/^/          /' "$1"
 }
 
+# Persistent users file (volume). Managed by scripts/authelia-users.py after first boot.
+USERS_DB="${DATA}/users_database.yml"
+
 write_users_db() {
+  # Keep existing accounts across restarts. Only seed admin on first boot.
+  if [ -f "${USERS_DB}" ]; then
+    log "using existing users database ${USERS_DB}"
+    return 0
+  fi
   digest="$(hash_password "${ADMIN_PASS}")"
   [ -n "${digest}" ] || die "failed to hash admin password"
-  cat >"${RUNTIME}/users_database.yml" <<EOF
+  log "seeding users database with admin '${ADMIN_USER}'"
+  cat >"${USERS_DB}" <<EOF
 users:
   ${ADMIN_USER}:
     disabled: false
@@ -96,6 +105,7 @@ users:
     groups:
       - admins
 EOF
+  chmod 600 "${USERS_DB}"
 }
 
 write_config() {
@@ -150,7 +160,7 @@ authentication_backend:
     disable: true
   refresh_interval: '5m'
   file:
-    path: ${RUNTIME}/users_database.yml
+    path: ${USERS_DB}
 
 access_control:
   default_policy: deny

@@ -127,6 +127,20 @@ Nginx also creates the localhost cert on first start if `cert/` is writable.
 ./scripts/compose.sh down
 ```
 
+### Authelia users
+
+File-backend accounts (OIDC logins) are managed with:
+
+```bash
+./scripts/authelia-users.py list
+./scripts/authelia-users.py add alice --email alice@example.com
+./scripts/authelia-users.py set-password alice
+./scripts/authelia-users.py remove alice
+./scripts/authelia-users.py sync-admin   # re-apply KEYCLOAK_ADMIN* from .env
+```
+
+Needs Authelia running and host `PyYAML` (`python3 -m pip install --user pyyaml`). Passwords are hashed inside the Authelia container. The users file lives on the `authelia_data` volume and survives restarts; only a missing file is re-seeded with the shared admin on first boot.
+
 Full wipe (containers **and** named volumes):
 
 ```bash
@@ -142,7 +156,8 @@ Add a Postgres app DB on an already-initialized volume:
 ## How SSO is wired
 
 1. **Authelia** boots via `authelia/docker-entrypoint.sh`:
-   - Writes file user DB (shared admin) and OIDC clients `nextcloud` + `nexus`
+   - Seeds file user DB with shared admin on first boot (later edits via `scripts/authelia-users.py`)
+   - Writes OIDC clients `nextcloud` + `nexus`
    - Serves portal + OIDC on `auth.<DOMAIN>` and `auth.localhost`
 2. **Nextcloud** hook `nextcloud/hooks/before-starting/99-oidc.sh` registers `user_oidc` against Authelia.
 3. **Nexus** UI:
