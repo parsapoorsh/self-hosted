@@ -139,6 +139,16 @@ if [ ! -f "$CERTS/$DOMAIN/fullchain.pem" ] || [ ! -f "$CERTS/$DOMAIN/privkey.pem
   exit 1
 fi
 
+# Variable ssl_certificate paths are opened by the nginx worker (non-root) at
+# handshake time. LE/acme tools often drop privkey as 0600 owned by the host
+# user; that becomes Permission denied -> TLS alert internal_error.
+# Match cert/localhost: 644 on leaf keys. Host protection is the gitignored cert/.
+for key in "$CERTS/$DOMAIN/privkey.pem" "$CERTS/localhost/privkey.pem"; do
+  if [ -f "$key" ] && [ -w "$key" ]; then
+    chmod 644 "$key" 2>/dev/null || true
+  fi
+done
+
 echo "nginx DOMAIN=${DOMAIN} + localhost servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf
