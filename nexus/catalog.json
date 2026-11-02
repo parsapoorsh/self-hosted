@@ -5,6 +5,7 @@
     "docker",
     "go",
     "go-sum",
+    "huggingface",
     "nodejs",
     "npm",
     "nuget",
@@ -61,6 +62,10 @@
       "go-ompfinex": "https://mirror.ompfinex.team/go",
       "go-runflare": "https://mirror-go.runflare.com",
       "go-upstream": "https://proxy.golang.org"
+    },
+    "huggingface": {
+      "huggingface-devneeds": "https://hf.devneeds.ir/",
+      "huggingface-upstream": "https://huggingface.co"
     },
     "npm": {
       "npm-chabokan": "https://mirror2.chabokan.net/npm",
