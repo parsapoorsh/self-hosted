@@ -89,7 +89,10 @@
       "pypi-devneeds": "https://pypi.devneeds.ir",
       "pypi-iranserver": "https://pypi.iranserver.com/repository/pypi",
       "pypi-liara": "https://package-mirror.liara.ir/repository/pypi",
-      "pypi-pytorch": "https://download.pytorch.org/whl",
+      "pypi-pytorch": {
+        "remote": "https://download.pytorch.org",
+        "indexPath": "/whl"
+      },
       "pypi-runflare": "https://mirror-pypi.runflare.com",
       "pypi-upstream": "https://pypi.org"
     },

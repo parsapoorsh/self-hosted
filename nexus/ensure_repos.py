@@ -144,6 +144,10 @@ def expand_catalog(raw: dict[str, Any]) -> tuple[
             }
             if fmt == "docker":
                 entry["indexType"] = extra.get("index", "REGISTRY")
+            # PyPI simple-index path. Default /simple (pypi.org). Empty string for
+            # indexes that ARE the simple root (download.pytorch.org/whl).
+            if fmt == "pypi" and "indexPath" in extra:
+                entry["indexPath"] = extra["indexPath"]
             proxies.append(entry)
 
     groups: list[dict[str, Any]] = []
@@ -232,6 +236,12 @@ def proxy_payload(entry: dict[str, Any]) -> dict[str, Any]:
     if fmt == "raw":
         body["raw"] = {"contentDisposition": "INLINE"}
     # Do not set pypi.removeQuarantined — it requires IQ Firewall Server.
+    # Nexus REST maps "suffix" -> internal pypi.indexPath (default /simple).
+    if fmt == "pypi" and "indexPath" in entry:
+        body["pypi"] = {
+            "suffix": entry["indexPath"],
+            "removeQuarantinedVersions": False,
+        }
     if fmt == "cargo":
         body["cargo"] = {"requireAuthentication": False}
     return body
@@ -390,6 +400,77 @@ def available_members(
     return out
 
 
+def run_groovy(nx: Nexus, name: str, content: str) -> str:
+    """Create, run, delete a temporary Groovy script. Returns result text."""
+    nx.request("DELETE", f"/service/rest/v1/script/{name}")
+    code, payload = nx.request(
+        "POST",
+        "/service/rest/v1/script",
+        {"name": name, "type": "groovy", "content": content},
+    )
+    if code not in (200, 201, 204):
+        raise RuntimeError(f"script create HTTP {code}: {payload}")
+
+    req = urllib.request.Request(
+        f"{nx.base}/service/rest/v1/script/{name}/run",
+        data=b"",
+        method="POST",
+        headers={
+            **nx.headers,
+            "Content-Type": "text/plain",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            raw = resp.read().decode()
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode(errors="replace")
+        nx.request("DELETE", f"/service/rest/v1/script/{name}")
+        raise RuntimeError(f"script run HTTP {exc.code}: {raw}") from exc
+    nx.request("DELETE", f"/service/rest/v1/script/{name}")
+    try:
+        data = json.loads(raw)
+        return str(data.get("result", raw))
+    except json.JSONDecodeError:
+        return raw
+
+
+def apply_pypi_index_paths(nx: Nexus, proxies: list[dict[str, Any]]) -> None:
+    """Force pypi.indexPath via Groovy (REST empty suffix is ignored by Nexus)."""
+    special = [
+        (e["name"], e["indexPath"])
+        for e in proxies
+        if e.get("format") == "pypi" and "indexPath" in e
+    ]
+    if not special:
+        return
+    pairs = ", ".join(
+        f'"{name}": "{path}"'
+        for name, path in special
+    )
+    groovy = f"""
+import org.sonatype.nexus.repository.manager.RepositoryManager
+def rm = container.lookup(RepositoryManager.class.name)
+def wanted = [{pairs}] as Map
+def out = []
+wanted.each {{ name, indexPath ->
+  def repo = rm.get(name)
+  if (repo == null) {{
+    out << (name + ":missing")
+    return
+  }}
+  def cfg = repo.getConfiguration().copy()
+  def pypi = cfg.getAttributes().computeIfAbsent("pypi", {{ k -> new HashMap() }})
+  pypi.put("indexPath", indexPath)
+  rm.update(cfg)
+  out << (name + ":indexPath=" + indexPath)
+}}
+return out.join(",")
+"""
+    result = run_groovy(nx, "self-hosted-pypi-indexpath", groovy)
+    log(f"pypi indexPath: {result}")
+
+
 def ensure_groups(nx: Nexus, items: list[dict[str, Any]]) -> list[str]:
     failed: list[str] = []
     for entry in items:
@@ -450,6 +531,7 @@ def main() -> int:
 
     hosted_failed = ensure_hosted(nx, hosted)
     proxy_failed = ensure_proxies(nx, proxies)
+    apply_pypi_index_paths(nx, proxies)
     group_failed = ensure_groups(nx, groups)
 
     log(
