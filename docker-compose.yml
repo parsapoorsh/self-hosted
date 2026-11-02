@@ -48,7 +48,6 @@ services:
   kiwix:
     build: ./kiwix
     image: self-hosted-kiwix:local
-    container_name: kiwix-serve
     env_file:
       - ./kiwix/env
     environment:
