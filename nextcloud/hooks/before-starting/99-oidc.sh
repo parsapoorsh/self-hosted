@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs inside the nextcloud container on every start (official image hook).
-# Configures user_oidc against Keycloak. Idempotent.
+# Trusted domains + user_oidc against Keycloak. Idempotent.
 set -euo pipefail
 
 OCC=(php /var/www/html/occ)
@@ -19,7 +19,6 @@ fi
 # Internal discovery (service name). Public auth.<DOMAIN> is for browsers only;
 # *.localhost resolves to loopback inside containers and breaks OIDC.
 DISCOVERY_INTERNAL="http://keycloak:8080/realms/${REALM}/.well-known/openid-configuration"
-# Provider still stores this URL; Keycloak KC_HOSTNAME keeps browser endpoints public.
 DISCOVERY="${DISCOVERY_INTERNAL}"
 
 if ! "${OCC[@]}" status 2>/dev/null | grep -q 'installed: true'; then
@@ -28,11 +27,15 @@ if ! "${OCC[@]}" status 2>/dev/null | grep -q 'installed: true'; then
 fi
 
 "${OCC[@]}" config:system:set allow_local_remote_servers --type=boolean --value=true >/dev/null
+
+# Both public names. Do not force overwritehost — Host header must win so
+# cloud.localhost stays on localhost (otherwise redirects to cloud.<DOMAIN>).
 "${OCC[@]}" config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null
-"${OCC[@]}" config:system:set overwritehost --value="cloud.${DOMAIN}" >/dev/null
-"${OCC[@]}" config:system:set overwrite.cli.url --value="${SCHEME}://cloud.${DOMAIN}" >/dev/null
-# Pin public URL scheme so OIDC redirect_uri matches Keycloak (and APP_SCHEME).
-"${OCC[@]}" config:system:set overwriteprotocol --value="${SCHEME}" >/dev/null
+"${OCC[@]}" config:system:set trusted_domains 1 --value="cloud.localhost" >/dev/null
+"${OCC[@]}" config:system:delete overwritehost >/dev/null 2>&1 || true
+"${OCC[@]}" config:system:delete overwriteprotocol >/dev/null 2>&1 || true
+"${OCC[@]}" config:system:set overwrite.cli.url \
+  --value="${SCHEME}://cloud.${DOMAIN}" >/dev/null
 
 if ! "${OCC[@]}" app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   echo "oidc-hook: installing user_oidc"
@@ -52,9 +55,6 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-# If discovery still advertises auth.<DOMAIN> token URLs, force IPv4-friendly
-# access by also trusting the internal issuer host via overwrite is N/A;
-# KC_HOSTNAME_BACKCHANNEL_DYNAMIC lets Keycloak accept internal backchannel.
 echo "oidc-hook: configuring provider '${PROVIDER_ID}'"
 "${OCC[@]}" user_oidc:provider "${PROVIDER_ID}" \
   --clientid="${CLIENT_ID}" \
@@ -74,4 +74,4 @@ if [[ "${SCHEME}" == "http" ]]; then
 else
   "${OCC[@]}" config:app:delete user_oidc allow_insecure_http >/dev/null 2>&1 || true
 fi
-echo "oidc-hook: provider ready"
+echo "oidc-hook: provider ready (trusted=cloud.${DOMAIN},cloud.localhost)"

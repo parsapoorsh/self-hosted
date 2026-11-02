@@ -31,9 +31,13 @@ cp .env.example .env
 ./scripts/compose.sh up -d
 ```
 
-`./scripts/compose.sh` refreshes gitignored `.env.secrets` from `.env`, then runs `docker compose` with both files. Prefer it over bare `docker compose` so internal secrets stay in sync.
+`./scripts/compose.sh` refreshes gitignored `.env.secrets` from `.env`, runs `docker compose` with both files, then runs `./scripts/smoke-check.sh` after `up -d`. Prefer it over bare `docker compose` so internal secrets stay in sync and boot is verified.
 
-First boot can take a few minutes (Keycloak realm bootstrap, Nextcloud install, Nexus catalog).
+First boot can take a few minutes (Keycloak realm bootstrap, Nextcloud install, Nexus catalog). Re-check anytime with:
+
+```bash
+./scripts/smoke-check.sh
+```
 
 ### Login
 
