@@ -112,6 +112,11 @@
       }
     }
   },
+  "hosted": {
+    "pypi": [
+      "pypi-hosted"
+    ]
+  },
   "groups": {
     "cargo": {
       "cargo": [
@@ -201,6 +206,7 @@
     },
     "pypi": {
       "pypi": [
+        "pypi-hosted",
         "pypi-chabokan",
         "pypi-liara",
         "pypi-iranserver",
