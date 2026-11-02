@@ -25,7 +25,32 @@ curl_auth() {
   local user="$1"
   local pass="$2"
   shift 2
-  curl -sS -f -u "${user}:${pass}" "$@"
+  local attempt code
+  # Nexus rate-limits early REST (HTTP 429); retry briefly so bootstrap can finish.
+  for attempt in $(seq 1 12); do
+    code="$(
+      curl -sS -o /tmp/nexus-bootstrap-curl.out -w "%{http_code}" \
+        -u "${user}:${pass}" \
+        "$@" || true
+    )"
+    case "${code}" in
+      200|201|204)
+        cat /tmp/nexus-bootstrap-curl.out
+        return 0
+        ;;
+      429)
+        log "HTTP 429 (try ${attempt}/12); sleeping"
+        sleep 5
+        ;;
+      *)
+        log "HTTP ${code} for ${*: -1}"
+        cat /tmp/nexus-bootstrap-curl.out >&2 || true
+        return 1
+        ;;
+    esac
+  done
+  log "gave up after rate limits on ${*: -1}"
+  return 1
 }
 
 # /status is public; use a privileged endpoint to verify credentials.
@@ -232,10 +257,16 @@ configure() {
 }
 
 # Retry until success, then exit (background job under entrypoint).
+# Call configure as a plain command so set -e still applies inside it.
+# (`if configure` / `configure &&` would disable set -e for the whole function.)
 while true; do
-  if configure; then
+  set +e
+  configure
+  status=$?
+  set -e
+  if [[ "${status}" -eq 0 ]]; then
     exit 0
   fi
-  log "retry in 15s"
+  log "configure failed (exit ${status}); retry in 15s"
   sleep 15
 done
