@@ -1,0 +1,3 @@
+# Shared Postgres role defaults (passwords from root .env).
+POSTGRES_USER=postgres
+POSTGRES_DB=postgres

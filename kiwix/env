@@ -1,0 +1,4 @@
+# Kiwix defaults (override from root .env if needed).
+KIWIX_PORT=9393
+# KIWIX_HOST=
+# KIWIX_THREADS=

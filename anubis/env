@@ -1,0 +1,4 @@
+# Anubis runtime constants (botPolicy.yaml is separate).
+BIND=:8923
+TARGET=http://nginx:8080
+POLICY_FNAME=/data/cfg/botPolicy.yaml

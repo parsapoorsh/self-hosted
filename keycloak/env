@@ -1,0 +1,12 @@
+# Keycloak constants (secrets + DOMAIN from root .env / compose).
+KC_DB=postgres
+KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+KC_DB_USERNAME=keycloak
+KC_HTTP_ENABLED=true
+KC_PROXY_HEADERS=xforwarded
+# Frontend host from X-Forwarded-Host (auth.<DOMAIN> and auth.localhost).
+KC_HOSTNAME_STRICT=false
+KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
+KC_HEALTH_ENABLED=true
+# Lax: avoid Secure+SameSite=None cookies that browsers drop on plain HTTP.
+KC_SPI_COOKIE_DEFAULT_SAME_SITE=Lax

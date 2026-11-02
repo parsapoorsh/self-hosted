@@ -1,3 +1,5 @@
+# Service constants live in each service dir as `env` (or `*.env`).
+# Secrets and host-wide settings live in the project root `.env`.
 services:
   nginx:
     image: nginx:alpine
@@ -5,16 +7,12 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     environment:
-      # Apex domain; subdomains auth./kiwix./cloud. are derived in nginx template.
       DOMAIN: ${DOMAIN:-example.com}
     volumes:
-      # Mount beside the image config so stock mime.types stay available
       - ./nginx:/etc/nginx/self-hosted:ro
       - ./static:/usr/share/nginx/html:ro
-      # LE-style tree: cert/<DOMAIN|localhost>/{fullchain,privkey}.pem
-      # rw so first start can create cert/localhost if missing
+      # cert/<DOMAIN|localhost>/; rw so first start can create cert/localhost
       - ./cert:/etc/nginx/certs
-      # App-specific path on edge (FPM still uses image default /var/www/html)
       - nextcloud_html:/var/www/nextcloud:ro
     entrypoint: ["/bin/sh", "/etc/nginx/self-hosted/docker-entrypoint.sh"]
     networks:
@@ -29,16 +27,12 @@ services:
       - nexus-oauth2-local
     restart: unless-stopped
 
-  # Bot challenge filter: nginx (TLS) -> anubis -> nginx :8080 (HTTP routing)
   anubis:
     image: ghcr.io/techarohq/anubis:latest
+    env_file:
+      - ./anubis/env
     environment:
-      # Runtime only (not available in botPolicy.yaml)
-      BIND: ":8923"
-      # nginx backend HTTP routing
-      TARGET: "http://nginx:8080"
       COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-true}"
-      POLICY_FNAME: "/data/cfg/botPolicy.yaml"
     volumes:
       - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
     networks:
@@ -55,28 +49,25 @@ services:
     build: ./kiwix
     image: self-hosted-kiwix:local
     container_name: kiwix-serve
-    volumes:
-      - ./kiwix/files:/zim:ro
+    env_file:
+      - ./kiwix/env
     environment:
       KIWIX_PORT: ${KIWIX_PORT:-9393}
-      # Bind address for kiwix-serve -i/--address (empty = all interfaces)
       KIWIX_HOST: ${KIWIX_HOST:-}
-      # Parallel threads for kiwix-serve (default: nproc inside the container)
       KIWIX_THREADS: ${KIWIX_THREADS:-}
-    # Served at ${APP_SCHEME}://kiwix.${DOMAIN}/ (no path prefix)
+    volumes:
+      - ./kiwix/files:/zim:ro
     networks:
       - self-hosted
     restart: unless-stopped
 
-  # Shared Postgres for all apps. Each app gets its own DB + role
-  # (see postgres/init on first boot, or scripts/pg-app-db.sh later).
   postgres:
     image: postgres:16-alpine
+    env_file:
+      - ./postgres/env
     environment:
-      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
-      # Consumed by postgres/init/*.sh on first empty volume only.
+      # postgres/init on first empty volume
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
@@ -92,7 +83,6 @@ services:
       retries: 10
       start_period: 10s
 
-  # Cache/queue for Nextcloud (and future apps if needed).
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -105,24 +95,17 @@ services:
       timeout: 3s
       retries: 10
 
-  # Files / collab (PHP-FPM only). Edge nginx serves static + FastCGI.
-  # Public URL: ${APP_SCHEME}://cloud.${DOMAIN}/
-  # OIDC auto-config: nextcloud/hooks/before-starting/99-oidc.sh
   nextcloud:
     image: nextcloud:35-fpm
+    env_file:
+      - ./nextcloud/env
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: nextcloud
-      POSTGRES_USER: nextcloud
       POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
-      REDIS_HOST: redis
-      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com}
       OVERWRITEHOST: cloud.${DOMAIN:-example.com}
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-${APP_SCHEME:-http}://cloud.${DOMAIN:-example.com}}
-      TRUSTED_PROXIES: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
-      # Used by hooks/before-starting/99-oidc.sh
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-home}
@@ -143,30 +126,15 @@ services:
       - self-hosted
     restart: unless-stopped
 
-  # Shared IdP. Public URL: ${APP_SCHEME}://auth.${DOMAIN}/
-  # Realm/client/SSO user: keycloak/bootstrap-realm.sh (background on start).
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
+    env_file:
+      - ./keycloak/env
     environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded
-      # No fixed hostname: frontend URLs follow X-Forwarded-Host so
-      # auth.<DOMAIN> and auth.localhost both work for browser OIDC.
-      # Optional pin: KEYCLOAK_HOSTNAME=http://auth.example.com (then set
-      # KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true if internal backchannel is needed).
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
-      KC_HEALTH_ENABLED: "true"
-      # HTTP local (APP_SCHEME=http): SameSite=None forces Secure cookies that
-      # browsers drop on plain HTTP. Lax keeps auth.<host> session on login POST.
-      KC_SPI_COOKIE_DEFAULT_SAME_SITE: Lax
       # bootstrap-realm.sh
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
@@ -183,8 +151,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # auth.<DOMAIN> and auth.localhost both resolve to Keycloak inside the network
-    # (browser *.localhost -> loopback hits nginx; containers use these aliases).
     networks:
       self-hosted:
         aliases:
@@ -203,24 +169,14 @@ services:
       retries: 12
       start_period: 90s
 
-  # Artifact registry. Public URL: nexus.<DOMAIN> and nexus.localhost
-  # No default repos. UI SSO: Keycloak via oauth2-proxy + Rut Auth.
-  # Admin password / Rut Auth / repo cleanup: nexus/bootstrap.sh (background on start).
   nexus:
     image: sonatype/nexus3:3.76.0
     entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
+    env_file:
+      - ./nexus/env
     environment:
-      # Skip sample repos; allow Groovy for Rut Auth bootstrap; modest heap.
-      INSTALL4J_ADD_VM_PARAMS: >-
-        -Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g
-        -Dnexus.skipDefaultRepositories=true
-        -Dnexus.scripts.allowCreation=true
-        -Djava.util.prefs.userRoot=/nexus-data/javaprefs
-      NEXUS_CONTEXT_PATH: /
-      # bootstrap.sh (same pattern as keycloak/bootstrap-realm.sh)
-      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
       NEXUS_ADMIN_PASSWORD: ${NEXUS_ADMIN_PASSWORD}
-      NEXUS_RUT_HEADER: X-Remote-User
+      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
     volumes:
       - nexus_data:/nexus-data
       - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
@@ -228,7 +184,6 @@ services:
     networks:
       - self-hosted
     restart: unless-stopped
-    # Clean Orient/H2 flush on stop
     stop_grace_period: 120s
     healthcheck:
       test:
@@ -241,41 +196,24 @@ services:
       retries: 20
       start_period: 180s
 
-  # Keycloak OIDC front for Nexus UI (nginx auth_request). Package APIs skip this.
-  # Two permanent proxies: one for DOMAIN hosts, one for *.localhost (login/callback host).
-  # Discovery skipped; token/jwks use keycloak:8080. Issuer stays auth.<DOMAIN> (KC_HOSTNAME).
+  # Nexus UI SSO for nexus.<DOMAIN>
   nexus-oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
+    env_file:
+      - ./nexus/oauth2-proxy.env
     environment:
-      OAUTH2_PROXY_PROVIDER: keycloak-oidc
       OAUTH2_PROXY_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
       OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-false}"
+      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
       OAUTH2_PROXY_OIDC_ISSUER_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}
-      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
       OAUTH2_PROXY_LOGIN_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
       OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/token
       OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/certs
       OAUTH2_PROXY_PROFILE_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/userinfo
-      OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
-      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
-      OAUTH2_PROXY_UPSTREAMS: static://202
-      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
-      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
-      OAUTH2_PROXY_REVERSE_PROXY: "true"
-      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
-      OAUTH2_PROXY_OIDC_EMAIL_CLAIM: email
-      OAUTH2_PROXY_USER_ID_CLAIM: preferred_username
-      OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
-      OAUTH2_PROXY_COOKIE_NAME: _nexus_oauth2
-      OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-false}"
-      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
-      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
       OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DOMAIN:-example.com},${DOMAIN:-example.com}"
-      OAUTH2_PROXY_SCOPE: openid email profile
-      OAUTH2_PROXY_OIDC_EXTRA_AUDIENCES: account
-      OAUTH2_PROXY_SKIP_CLAIMS_FROM_PROFILE_URL: "true"
-      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -283,41 +221,15 @@ services:
       - self-hosted
     restart: unless-stopped
 
-  # Nexus UI SSO for https://nexus.localhost/ (HTTP redirects to HTTPS; Secure cookies).
+  # Nexus UI SSO for https://nexus.localhost/
   nexus-oauth2-local:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
+    env_file:
+      - ./nexus/oauth2-local.env
     environment:
-      OAUTH2_PROXY_PROVIDER: keycloak-oidc
       OAUTH2_PROXY_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
       OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
-      # HTTPS localhost: Keycloak Secure cookies require TLS on auth/nexus.localhost.
-      OAUTH2_PROXY_OIDC_ISSUER_URL: https://auth.localhost/realms/${KEYCLOAK_REALM:-home}
-      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
-      OAUTH2_PROXY_LOGIN_URL: https://auth.localhost/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/auth
-      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/token
-      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/certs
-      OAUTH2_PROXY_PROFILE_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/userinfo
-      OAUTH2_PROXY_REDIRECT_URL: https://nexus.localhost/oauth2/callback
-      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
-      OAUTH2_PROXY_UPSTREAMS: static://202
-      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
-      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
-      OAUTH2_PROXY_REVERSE_PROXY: "true"
-      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
-      OAUTH2_PROXY_OIDC_EMAIL_CLAIM: email
-      OAUTH2_PROXY_USER_ID_CLAIM: preferred_username
       OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
-      OAUTH2_PROXY_COOKIE_NAME: _nexus_oauth2_local
-      OAUTH2_PROXY_COOKIE_SECURE: "true"
-      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
-      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
-      OAUTH2_PROXY_WHITELIST_DOMAINS: ".localhost,localhost"
-      OAUTH2_PROXY_SCOPE: openid email profile
-      OAUTH2_PROXY_OIDC_EXTRA_AUDIENCES: account
-      # ID token already has preferred_username; userinfo groups claim is optional.
-      OAUTH2_PROXY_SKIP_CLAIMS_FROM_PROFILE_URL: "true"
-      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "true"
     depends_on:
       keycloak:
         condition: service_healthy
