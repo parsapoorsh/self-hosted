@@ -1,4 +1,4 @@
-# Keycloak constants (secrets + DOMAIN from root .env / compose).
+# Keycloak constants (human admin + secrets from root .env / .env.secrets).
 KC_DB=postgres
 KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
 KC_DB_USERNAME=keycloak
@@ -10,3 +10,8 @@ KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
 KC_HEALTH_ENABLED=true
 # Lax: avoid Secure+SameSite=None cookies that browsers drop on plain HTTP.
 KC_SPI_COOKIE_DEFAULT_SAME_SITE=Lax
+# First-boot temporary admin only; bootstrap promotes KEYCLOAK_ADMIN to permanent.
+KC_BOOTSTRAP_ADMIN_USERNAME=bootstrap-admin
+KEYCLOAK_REALM=home
+OIDC_CLIENT_ID=nextcloud
+NEXUS_OIDC_CLIENT_ID=nexus

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent Keycloak realm + OIDC clients + admin user (home realm).
+# Entrypoint already authenticated kcadm (permanent admin or bootstrap temp).
 set -euo pipefail
 
 KCADM=/opt/keycloak/bin/kcadm.sh
@@ -7,6 +8,8 @@ SERVER="${KEYCLOAK_SERVER:-http://127.0.0.1:8080}"
 REALM="${KEYCLOAK_REALM:-home}"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD required}"
+# Keycloak 26+ first-boot temp admin (compose sets KC_BOOTSTRAP_ADMIN_*).
+BOOTSTRAP_USER="${KC_BOOTSTRAP_ADMIN_USERNAME:-bootstrap-admin}"
 SCHEME="${APP_SCHEME:-http}"
 DOMAIN="${DOMAIN:-example.com}"
 AUTH_ORIGIN="${SCHEME}://auth.${DOMAIN}"
@@ -48,12 +51,113 @@ mktemp_tracked() {
   echo "${f}"
 }
 
-${KCADM} config credentials \
-  --server "${SERVER}" \
-  --realm master \
-  --user "${ADMIN_USER}" \
-  --password "${ADMIN_PASS}" \
-  >/dev/null
+kcadm_login() {
+  local user="$1"
+  local pass="$2"
+  ${KCADM} config credentials \
+    --server "${SERVER}" \
+    --realm master \
+    --user "${user}" \
+    --password "${pass}" \
+    >/dev/null
+}
+
+master_user_id() {
+  local username="$1"
+  local id
+  id="$(
+    ${KCADM} get users -r master -q "username=${username}" \
+      --fields id --format csv --noquotes 2>/dev/null \
+      | head -n1 | tr -d '\r'
+  )"
+  if [[ -n "${id}" && "${id}" != "id" ]]; then
+    printf '%s' "${id}"
+  fi
+}
+
+master_user_is_temporary() {
+  local username="$1"
+  local json
+  json="$(
+    ${KCADM} get users -r master \
+      -q "username=${username}" \
+      -q briefRepresentation=false 2>/dev/null || true
+  )"
+  printf '%s' "${json}" | grep -q 'is_temporary_admin'
+}
+
+delete_master_user() {
+  local username="$1"
+  local id
+  id="$(master_user_id "${username}")"
+  if [[ -n "${id}" ]]; then
+    echo "keycloak-bootstrap: deleting master user '${username}'"
+    ${KCADM} delete "users/${id}" -r master >/dev/null || true
+  fi
+}
+
+create_master_admin() {
+  local username="$1"
+  local password="$2"
+  local user_id
+  user_id="$(master_user_id "${username}")"
+  if [[ -z "${user_id}" ]]; then
+    echo "keycloak-bootstrap: creating permanent master admin '${username}'"
+    ${KCADM} create users -r master \
+      -s "username=${username}" \
+      -s enabled=true \
+      -s emailVerified=true
+    user_id="$(master_user_id "${username}")"
+  else
+    echo "keycloak-bootstrap: updating permanent master admin '${username}'"
+    ${KCADM} update "users/${user_id}" -r master \
+      -s enabled=true \
+      -s emailVerified=true >/dev/null
+  fi
+  ${KCADM} set-password -r master --userid "${user_id}" --new-password "${password}" >/dev/null
+  ${KCADM} add-roles -r master --uid "${user_id}" --rolename admin >/dev/null
+}
+
+# Replace Keycloak 26 temporary bootstrap admin with a permanent KEYCLOAK_ADMIN.
+ensure_master_admin() {
+  local promote="${BOOTSTRAP_USER}-promote"
+  local existing
+
+  existing="$(master_user_id "${ADMIN_USER}")"
+  if [[ -n "${existing}" ]] && ! master_user_is_temporary "${ADMIN_USER}"; then
+    create_master_admin "${ADMIN_USER}" "${ADMIN_PASS}"
+    kcadm_login "${ADMIN_USER}" "${ADMIN_PASS}"
+    if [[ "${BOOTSTRAP_USER}" != "${ADMIN_USER}" ]]; then
+      delete_master_user "${BOOTSTRAP_USER}"
+    fi
+    delete_master_user "${promote}"
+    return 0
+  fi
+
+  if [[ -n "${existing}" ]] && master_user_is_temporary "${ADMIN_USER}"; then
+    # Same username as temp admin: promote via a short-lived intermediate.
+    create_master_admin "${promote}" "${ADMIN_PASS}"
+    kcadm_login "${promote}" "${ADMIN_PASS}"
+    delete_master_user "${ADMIN_USER}"
+    create_master_admin "${ADMIN_USER}" "${ADMIN_PASS}"
+    kcadm_login "${ADMIN_USER}" "${ADMIN_PASS}"
+    delete_master_user "${promote}"
+    if [[ "${BOOTSTRAP_USER}" != "${ADMIN_USER}" ]]; then
+      delete_master_user "${BOOTSTRAP_USER}"
+    fi
+    return 0
+  fi
+
+  # Fresh install: temp user is BOOTSTRAP_USER, permanent is ADMIN_USER.
+  create_master_admin "${ADMIN_USER}" "${ADMIN_PASS}"
+  kcadm_login "${ADMIN_USER}" "${ADMIN_PASS}"
+  if [[ "${BOOTSTRAP_USER}" != "${ADMIN_USER}" ]]; then
+    delete_master_user "${BOOTSTRAP_USER}"
+  fi
+  delete_master_user "${promote}"
+}
+
+ensure_master_admin
 
 if ${KCADM} get "realms/${REALM}" >/dev/null 2>&1; then
   echo "keycloak-bootstrap: realm '${REALM}' exists"
