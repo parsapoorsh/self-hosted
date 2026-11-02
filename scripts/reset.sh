@@ -10,6 +10,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "stopping stack and removing containers, networks, volumes..."
-docker compose down -v --remove-orphans
+./scripts/compose.sh down -v --remove-orphans
 
-echo "done. start again with: docker compose up -d"
+echo "done. start again with: ./scripts/compose.sh up -d"
