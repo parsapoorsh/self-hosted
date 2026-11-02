@@ -4,6 +4,10 @@ set -euo pipefail
 
 BOOTSTRAP=/init/bootstrap.sh
 
+# Build the ContentUsage override JAR before Nexus starts; loader.path loads it
+# ahead of the copy inside the main JAR.
+python3 /init/patch-usage-limit.py || true
+
 # Keep base telemetry on loopback so an air-gapped instance never reaches the
 # 10-day upload grace period and switches to read-only mode.
 (
