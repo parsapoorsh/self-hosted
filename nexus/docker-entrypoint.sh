@@ -20,12 +20,14 @@ python3 /init/patch-usage-limit.py || true
 ) &
 
 (
-  echo "nexus: bootstrap waiting for REST API"
+  echo "nexus: bootstrap waiting for REST API" >&2
   for i in $(seq 1 120); do
     if curl -sS -f -o /dev/null "http://127.0.0.1:8081/service/rest/v1/status" 2>/dev/null; then
-      echo "nexus: bootstrap API up (try ${i})"
+      echo "nexus: bootstrap API up (try ${i})" >&2
       export NEXUS_URL=http://127.0.0.1:8081
       export NEXUS_DATA_DIR=/nexus-data
+      # Give first-boot admin.password a moment to appear before configure runs.
+      sleep 5
       exec /bin/bash "${BOOTSTRAP}"
     fi
     sleep 5

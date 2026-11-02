@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from base64 import b64encode
@@ -53,30 +54,41 @@ class Nexus:
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
+        retries: int = 12,
     ) -> tuple[int, Any]:
         data = None
         if body is not None:
             data = json.dumps(body).encode()
-        req = urllib.request.Request(
-            f"{self.base}{path}",
-            data=data,
-            headers=self.headers,
-            method=method,
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                raw = resp.read()
-                code = resp.getcode()
-                if not raw:
-                    return code, None
-                return code, json.loads(raw.decode())
-        except urllib.error.HTTPError as exc:
-            raw = exc.read()
+
+        last_code = 0
+        last_payload: Any = None
+        for attempt in range(1, retries + 1):
+            req = urllib.request.Request(
+                f"{self.base}{path}",
+                data=data,
+                headers=self.headers,
+                method=method,
+            )
             try:
-                payload = json.loads(raw.decode()) if raw else None
-            except json.JSONDecodeError:
-                payload = raw.decode(errors="replace") if raw else None
-            return exc.code, payload
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    raw = resp.read()
+                    code = resp.getcode()
+                    if not raw:
+                        return code, None
+                    return code, json.loads(raw.decode())
+            except urllib.error.HTTPError as exc:
+                raw = exc.read()
+                try:
+                    payload = json.loads(raw.decode()) if raw else None
+                except json.JSONDecodeError:
+                    payload = raw.decode(errors="replace") if raw else None
+                last_code, last_payload = exc.code, payload
+                if exc.code == 429 and attempt < retries:
+                    log(f"HTTP 429 on {method} {path} (try {attempt}/{retries})")
+                    time.sleep(3)
+                    continue
+                return exc.code, payload
+        return last_code, last_payload
 
     def exists_typed(self, fmt: str, typ: str, name: str) -> bool:
         code, _ = self.request(
@@ -219,8 +231,7 @@ def proxy_payload(entry: dict[str, Any]) -> dict[str, Any]:
         }
     if fmt == "raw":
         body["raw"] = {"contentDisposition": "INLINE"}
-    if fmt == "pypi":
-        body["pypi"] = {"removeQuarantined": True}
+    # Do not set pypi.removeQuarantined — it requires IQ Firewall Server.
     if fmt == "cargo":
         body["cargo"] = {"requireAuthentication": False}
     return body
@@ -252,6 +263,24 @@ def group_payload(
     if fmt == "cargo":
         body["cargo"] = {"requireAuthentication": False}
     return body
+
+
+def ensure_eula(nx: Nexus) -> None:
+    """Accept Community Edition EULA (required before many REST calls)."""
+    code, cur = nx.request("GET", "/service/rest/v1/system/eula")
+    if code != 200 or not isinstance(cur, dict):
+        log(f"eula get failed HTTP {code}: {cur}")
+        return
+    if cur.get("accepted") is True:
+        log("EULA already accepted")
+        return
+    body = dict(cur)
+    body["accepted"] = True
+    code, payload = nx.request("POST", "/service/rest/v1/system/eula", body)
+    if code in (200, 204):
+        log("EULA accepted")
+    else:
+        log(f"EULA accept failed HTTP {code}: {payload}")
 
 
 def ensure_anonymous(nx: Nexus) -> None:
@@ -415,8 +444,10 @@ def main() -> int:
         env("NEXUS_ADMIN_PASSWORD"),
     )
 
+    ensure_eula(nx)
     ensure_anonymous(nx)
     ensure_blobstores(nx, blobs)
+
     hosted_failed = ensure_hosted(nx, hosted)
     proxy_failed = ensure_proxies(nx, proxies)
     group_failed = ensure_groups(nx, groups)
