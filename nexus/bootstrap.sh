@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent Nexus bootstrap: admin password, Rut Auth (Keycloak via proxy),
-# drop default repositories. Runs once from docker-entrypoint background job.
+# drop default repositories, ensure catalog blob stores + proxies + groups.
+# Runs once from docker-entrypoint background job.
 #
 # Rut Auth capability is created via Groovy (OSS has no Capabilities REST API).
 # Requires nexus.scripts.allowCreation=true (set in compose JVM opts).
@@ -42,6 +43,12 @@ wait_nexus() {
   for i in $(seq 1 60); do
     if curl -sS -f -o /dev/null "${NEXUS_URL}/service/rest/v1/status" 2>/dev/null; then
       log "nexus is up (try ${i})"
+      # Prefer writable before mutating repos (avoids STARTED-state races).
+      if curl -sS -f -o /dev/null "${NEXUS_URL}/service/rest/v1/status/writable" 2>/dev/null; then
+        log "nexus writable"
+      else
+        log "nexus status ok; writable not ready yet (continuing)"
+      fi
       return 0
     fi
     sleep 5
@@ -176,6 +183,28 @@ delete_default_repos() {
   done
 }
 
+ensure_catalog_repos() {
+  local pass="$1"
+  local catalog="${NEXUS_CATALOG:-/init/catalog.json}"
+  local script="${NEXUS_ENSURE_REPOS:-/init/ensure_repos.py}"
+
+  if [[ ! -f "${catalog}" ]]; then
+    log "catalog missing: ${catalog}"
+    return 1
+  fi
+  if [[ ! -f "${script}" ]]; then
+    log "ensure_repos missing: ${script}"
+    return 1
+  fi
+
+  log "ensuring blob stores and repositories from ${catalog}"
+  NEXUS_URL="${NEXUS_URL}" \
+    NEXUS_ADMIN_USER="${ADMIN_USER}" \
+    NEXUS_ADMIN_PASSWORD="${pass}" \
+    NEXUS_CATALOG="${catalog}" \
+    python3 "${script}"
+}
+
 verify_rut() {
   local code
   code="$(
@@ -197,6 +226,7 @@ configure() {
   ensure_rut_capability "${pass}"
   ensure_realms "${pass}"
   delete_default_repos "${pass}"
+  ensure_catalog_repos "${pass}"
   verify_rut
   log "done (admin=${ADMIN_USER} rut=${HEADER_NAME})"
 }

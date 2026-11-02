@@ -170,7 +170,7 @@ services:
       start_period: 90s
 
   nexus:
-    image: sonatype/nexus3:3.76.0
+    image: sonatype/nexus3:3.97.3-ubi
     entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
     env_file:
       - ./nexus/env
@@ -181,6 +181,8 @@ services:
       - nexus_data:/nexus-data
       - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
       - ./nexus/bootstrap.sh:/init/bootstrap.sh:ro
+      - ./nexus/ensure_repos.py:/init/ensure_repos.py:ro
+      - ./nexus/catalog.json:/init/catalog.json:ro
     networks:
       - self-hosted
     restart: unless-stopped
