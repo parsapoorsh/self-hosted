@@ -11,11 +11,21 @@ SCHEME="${APP_SCHEME:-http}"
 DOMAIN="${DOMAIN:-example.com}"
 AUTH_ORIGIN="${SCHEME}://auth.${DOMAIN}"
 
+# App origins: primary DOMAIN plus localhost aliases (same stack, local browser).
 # Nextcloud sometimes emits https:// even on local http; allow both schemes.
-CLOUD_HTTP="http://cloud.${DOMAIN}"
-CLOUD_HTTPS="https://cloud.${DOMAIN}"
-NEXUS_HTTP="http://nexus.${DOMAIN}"
-NEXUS_HTTPS="https://nexus.${DOMAIN}"
+app_origins() {
+  # $1 = subdomain label (cloud, nexus, ...)
+  local sub="$1"
+  local origins=()
+  origins+=("http://${sub}.${DOMAIN}" "https://${sub}.${DOMAIN}")
+  if [[ "${DOMAIN}" != "localhost" ]]; then
+    origins+=("http://${sub}.localhost" "https://${sub}.localhost")
+  fi
+  printf '%s' "${origins[*]}"
+}
+
+CLOUD_ORIGINS="$(app_origins cloud)"
+NEXUS_ORIGINS="$(app_origins nexus)"
 
 CLIENT_ID="${OIDC_CLIENT_ID:-nextcloud}"
 CLIENT_SECRET="${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET required}"
@@ -61,22 +71,25 @@ fi
 ${KCADM} update "realms/${REALM}" -s "sslRequired=none" >/dev/null
 
 # Ensure a confidential OIDC client. kcadm -s drops multi-value arrays; use -f.
+# origins: space-separated roots (http://host and https://host, DOMAIN + localhost).
 ensure_oidc_client() {
   local client_id="$1"
   local client_secret="$2"
-  local root_http="$3"
-  local root_https="$4"
+  local origins="$3"
   # Extra redirect paths (space-separated), relative to each origin root.
   # Example: "/oauth2/callback" for oauth2-proxy.
-  local extra_paths="${5:-}"
-  local client_uuid client_json attr_json path redirects origins post_logout
+  local extra_paths="${4:-}"
+  local client_uuid client_json attr_json path post_logout root first_root
   local -a redirect_list origin_list post_list
 
   redirect_list=()
-  origin_list=("${root_http}" "${root_https}")
+  origin_list=()
   post_list=()
+  first_root=""
 
-  for root in "${root_http}" "${root_https}"; do
+  for root in ${origins}; do
+    [[ -z "${first_root}" ]] && first_root="${root}"
+    origin_list+=("${root}")
     redirect_list+=("${root}" "${root}/" "${root}/*")
     post_list+=("${root}" "${root}/" "${root}/*")
     for path in ${extra_paths}; do
@@ -98,7 +111,7 @@ ensure_oidc_client() {
     printf '  "directAccessGrantsEnabled": true,\n'
     printf '  "serviceAccountsEnabled": false,\n'
     printf '  "fullScopeAllowed": true,\n'
-    printf '  "rootUrl": "%s",\n' "${root_http}"
+    printf '  "rootUrl": "%s",\n' "${first_root}"
     printf '  "baseUrl": "/",\n'
     printf '  "redirectUris": [\n'
     local i n
@@ -158,15 +171,13 @@ EOF
 ensure_oidc_client \
   "${CLIENT_ID}" \
   "${CLIENT_SECRET}" \
-  "${CLOUD_HTTP}" \
-  "${CLOUD_HTTPS}" \
+  "${CLOUD_ORIGINS}" \
   ""
 
 ensure_oidc_client \
   "${NEXUS_CLIENT_ID}" \
   "${NEXUS_CLIENT_SECRET}" \
-  "${NEXUS_HTTP}" \
-  "${NEXUS_HTTPS}" \
+  "${NEXUS_ORIGINS}" \
   "/oauth2/callback"
 
 ensure_user() {
