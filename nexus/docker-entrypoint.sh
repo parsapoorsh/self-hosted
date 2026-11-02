@@ -4,6 +4,17 @@ set -euo pipefail
 
 BOOTSTRAP=/init/bootstrap.sh
 
+# Keep base telemetry on loopback so an air-gapped instance never reaches the
+# 10-day upload grace period and switches to read-only mode.
+(
+  set +e
+  while true; do
+    python3 /init/telemetry-sink.py
+    echo "nexus: telemetry sink exited; restarting" >&2
+    sleep 2
+  done
+) &
+
 (
   echo "nexus: bootstrap waiting for REST API"
   for i in $(seq 1 120); do

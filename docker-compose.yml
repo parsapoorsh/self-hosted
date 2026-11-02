@@ -180,6 +180,7 @@ services:
     volumes:
       - nexus_data:/nexus-data
       - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - ./nexus/telemetry-sink.py:/init/telemetry-sink.py:ro
       - ./nexus/bootstrap.sh:/init/bootstrap.sh:ro
       - ./nexus/ensure_repos.py:/init/ensure_repos.py:ro
       - ./nexus/catalog.json:/init/catalog.json:ro

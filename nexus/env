@@ -3,4 +3,6 @@ NEXUS_CONTEXT_PATH=/
 NEXUS_RUT_HEADER=X-Remote-User
 NEXUS_ADMIN_USER=admin
 # Skip sample repos; allow Groovy for Rut Auth bootstrap; modest heap.
-INSTALL4J_ADD_VM_PARAMS=-Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+# upload.url points base telemetry at the loopback sink started by
+# docker-entrypoint.sh, so air-gapped installs never enter read-only mode.
+INSTALL4J_ADD_VM_PARAMS=-Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Dnexus.analytics.upload.url=http://127.0.0.1:8099/production/oss/ingest
