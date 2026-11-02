@@ -91,7 +91,7 @@ Tracked `*/env` files hold non-secret service constants only.
 |------|--------|
 | `authelia/env` | OIDC client IDs |
 | `nextcloud/env` | Postgres/redis hosts, OIDC provider id |
-| `nexus/env` | JVM opts, Rut Auth header name |
+| `nexus/env` | JVM heap/direct caps, Rut Auth header name |
 | `nexus/oauth2-*.env` | oauth2-proxy behavior (DOMAIN vs localhost) |
 | `postgres/env` | Default role/db names |
 | `nginx/` | Edge templates and snippets |
@@ -186,4 +186,5 @@ cert/                        # TLS material (gitignored)
 - Do not commit `.env` or `.env.secrets`.
 - Changing `KEYCLOAK_ADMIN_PASSWORD` regenerates OIDC secrets on the next `./scripts/compose.sh` run; Authelia rebuilds client hashes and the user password on start. DB role passwords follow `POSTGRES_PASSWORD` and stay stable when only the admin password changes.
 - Nexus first start is heavy; healthchecks allow a long `start_period`.
-- Authelia typically uses ~30–80 MiB RAM (vs Keycloak’s hundreds of MiB).
+- Authelia typically uses ~30–80 MiB RAM.
+- Nexus is still a large Java app; `nexus/env` caps heap at 768 MiB + 512 MiB direct (~1 GiB RSS typical). Bump those if you see OOMs.

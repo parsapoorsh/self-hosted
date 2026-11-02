@@ -1,7 +1,8 @@
 # Nexus Repository constants (human admin from KEYCLOAK_ADMIN_* via .env.secrets).
 NEXUS_CONTEXT_PATH=/
 NEXUS_RUT_HEADER=X-Remote-User
-# Skip sample repos; allow Groovy for Rut Auth bootstrap; modest heap.
+# Home-lab JVM: default profile is multi-GB. Keep heap+direct under ~1.3g total.
+# Raise -Xmx / MaxDirectMemorySize if status/API OOMs under heavy proxy traffic.
 # upload.url points base telemetry at the loopback sink; loader.path shadows
 # CE usage-limit classes with the patched copies built by docker-entrypoint.sh.
-INSTALL4J_ADD_VM_PARAMS=-Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Dnexus.analytics.upload.url=http://127.0.0.1:8099/production/oss/ingest -Dloader.path=/nexus-data/patch/nexus-content-usage-patch.jar
+INSTALL4J_ADD_VM_PARAMS=-Xms256m -Xmx768m -XX:MaxDirectMemorySize=512m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Dnexus.analytics.upload.url=http://127.0.0.1:8099/production/oss/ingest -Dloader.path=/nexus-data/patch/nexus-content-usage-patch.jar

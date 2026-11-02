@@ -180,6 +180,8 @@ services:
       - ./nexus/catalog.json:/init/catalog.json:ro
     networks:
       - self-hosted
+    # Ceiling above INSTALL4J heap+direct in nexus/env (~1.3g budget).
+    mem_limit: 1536m
     restart: unless-stopped
     stop_grace_period: 120s
     healthcheck:
