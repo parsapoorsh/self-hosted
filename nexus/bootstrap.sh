@@ -192,19 +192,35 @@ ensure_realms() {
 
 delete_default_repos() {
   local pass="$1"
-  local repo code
+  local repo code attempt
   for repo in ${DEFAULT_REPOS}; do
-    code="$(
-      curl -sS -o /dev/null -w "%{http_code}" \
-        -u "${ADMIN_USER}:${pass}" \
-        -X DELETE \
-        "${NEXUS_URL}/service/rest/v1/repositories/${repo}" || true
-    )"
-    case "${code}" in
-      204) log "deleted default repo ${repo}" ;;
-      404) ;;
-      *) log "delete ${repo}: HTTP ${code}" ;;
-    esac
+    code="000"
+    for attempt in $(seq 1 12); do
+      code="$(
+        curl -sS -o /dev/null -w "%{http_code}" \
+          -u "${ADMIN_USER}:${pass}" \
+          -X DELETE \
+          "${NEXUS_URL}/service/rest/v1/repositories/${repo}" || true
+      )"
+      case "${code}" in
+        204)
+          log "deleted default repo ${repo}"
+          break
+          ;;
+        404)
+          code="404"
+          break
+          ;;
+        429)
+          log "delete ${repo}: HTTP 429 (try ${attempt}/12); sleeping"
+          sleep 5
+          ;;
+        *)
+          log "delete ${repo}: HTTP ${code}"
+          break
+          ;;
+      esac
+    done
   done
 }
 
@@ -245,6 +261,8 @@ verify_rut() {
 }
 
 configure() {
+  # Re-enable errexit inside the retry loop (caller uses set +e around us).
+  set -euo pipefail
   local pass
   wait_nexus
   pass="$(resolve_admin_pass)" || return 1
@@ -257,8 +275,6 @@ configure() {
 }
 
 # Retry until success, then exit (background job under entrypoint).
-# Call configure as a plain command so set -e still applies inside it.
-# (`if configure` / `configure &&` would disable set -e for the whole function.)
 while true; do
   set +e
   configure
