@@ -79,7 +79,13 @@ DNS.2 = *.$DOMAIN
 EOF
 
 if [[ "$DOMAIN" == "localhost" ]]; then
+  # Prefer scripts/gen-localhost-cert.sh (single cert + stable CA for all *.localhost).
   cat >>"$WORK_DIR/leaf.cnf" <<EOF
+DNS.3 = www.localhost
+DNS.4 = auth.localhost
+DNS.5 = cloud.localhost
+DNS.6 = nexus.localhost
+DNS.7 = kiwix.localhost
 IP.1 = 127.0.0.1
 IP.2 = ::1
 EOF
