@@ -1,787 +1,122 @@
 {
   "blobStores": [
-    {
-      "name": "cargo",
-      "path": "cargo"
-    },
-    {
-      "name": "composer",
-      "path": "composer"
-    },
-    {
-      "name": "docker",
-      "path": "docker"
-    },
-    {
-      "name": "go",
-      "path": "go"
-    },
-    {
-      "name": "go-sum",
-      "path": "go-sum"
-    },
-    {
-      "name": "nodejs",
-      "path": "nodejs"
-    },
-    {
-      "name": "npm",
-      "path": "npm"
-    },
-    {
-      "name": "nuget",
-      "path": "nuget"
-    },
-    {
-      "name": "pypi",
-      "path": "pypi"
-    }
+    "cargo",
+    "composer",
+    "docker",
+    "go",
+    "go-sum",
+    "nodejs",
+    "npm",
+    "nuget",
+    "pypi"
   ],
-  "proxies": [
-    {
-      "name": "cargo-devneeds",
-      "format": "cargo",
-      "blobStore": "cargo",
-      "remoteUrl": "https://cargo.devneeds.ir/repository/cargo/",
-      "strictContentTypeValidation": true,
-      "cargo": {
-        "requireAuthentication": false
-      }
+  "proxies": {
+    "cargo": {
+      "cargo-devneeds": "https://cargo.devneeds.ir/repository/cargo/",
+      "cargo-iranserver": "https://cargo.iranserver.com/repository/cargo/",
+      "cargo-upstream": "https://index.crates.io/"
     },
-    {
-      "name": "cargo-iranserver",
-      "format": "cargo",
-      "blobStore": "cargo",
-      "remoteUrl": "https://cargo.iranserver.com/repository/cargo/",
-      "strictContentTypeValidation": true,
-      "cargo": {
-        "requireAuthentication": false
-      }
+    "composer": {
+      "composer-chabokan": "https://mirror2.chabokan.net/composer/",
+      "composer-iranserver": "https://composer.iranserver.com/repository/composer/",
+      "composer-kargadan-chabokan": "https://mirror.kargadan.ir/repository/composer-chabokan/",
+      "composer-kargadan-jamko": "https://mirror.kargadan.ir/repository/composer-jamko/",
+      "composer-kargadan-original": "https://mirror.kargadan.ir/repository/composer-original/",
+      "composer-kargadan-runflare": "https://mirror.kargadan.ir/repository/composer-runflare/",
+      "composer-liara": "https://package-mirror.liara.ir/repository/composer/",
+      "composer-runflare": "https://mirror-composer.runflare.com/",
+      "composer-upstream": "https://packagist.org/"
     },
-    {
-      "name": "cargo-upstream",
-      "format": "cargo",
-      "blobStore": "cargo",
-      "remoteUrl": "https://index.crates.io/",
-      "strictContentTypeValidation": true,
-      "cargo": {
-        "requireAuthentication": false
-      }
-    },
-    {
-      "name": "composer-chabokan",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror2.chabokan.net/composer/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-iranserver",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://composer.iranserver.com/repository/composer/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-kargadan-chabokan",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/composer-chabokan/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-kargadan-jamko",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/composer-jamko/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-kargadan-original",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/composer-original/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-kargadan-runflare",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/composer-runflare/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-liara",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://package-mirror.liara.ir/repository/composer/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-runflare",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://mirror-composer.runflare.com/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "composer-upstream",
-      "format": "composer",
-      "blobStore": "composer",
-      "remoteUrl": "https://packagist.org/",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "docker-arvancloud",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker.arvancloud.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
+    "docker": {
+      "docker-arvancloud": "https://docker.arvancloud.ir",
+      "docker-cdnir": "https://mirror.cdn.ir",
+      "docker-chabokan": "https://mirror2.chabokan.net",
+      "docker-devneeds": "https://docker.devneeds.ir",
+      "docker-dockerir": "https://registry.docker.ir",
+      "docker-hamdocker": "https://hub.hamdocker.ir",
+      "docker-hub": {
+        "remote": "https://registry-1.docker.io",
+        "index": "HUB"
       },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
+      "docker-hyperclouds": "https://mirrors.hyperclouds.ir",
+      "docker-iranserver": "https://docker.iranserver.com",
+      "docker-kargadan": "https://docker-mirror.kargadan.ir",
+      "docker-kubarcloud": "https://docker-mirror.kubarcloud.com",
+      "docker-liara": "https://docker-mirror.liara.ir",
+      "docker-runflare": "https://mirror-docker.runflare.com",
+      "ghcr-liara": "https://ghcr-mirror.liara.ir",
+      "ghcr-upstream": "https://ghcr.io",
+      "k8s-liara": "https://k8s-mirror.liara.ir",
+      "k8s-runflare": "https://mirror-k8s.runflare.com",
+      "k8s-upstream": "https://registry.k8s.io",
+      "quay-kargadan": "https://docker-quay-mirror.kargadan.ir",
+      "quay-upstream": "https://quay.io"
+    },
+    "go": {
+      "go-devneeds": "https://go.devneeds.ir",
+      "go-iranserver": "https://go.iranserver.com/repository/go",
+      "go-kargadan": "https://mirror.kargadan.ir/repository/go-group",
+      "go-liara": "https://package-mirror.liara.ir/repository/go",
+      "go-litebase": "https://mirror.litebase.ir/repository/go",
+      "go-ompfinex": "https://mirror.ompfinex.team/go",
+      "go-runflare": "https://mirror-go.runflare.com",
+      "go-upstream": "https://proxy.golang.org"
+    },
+    "npm": {
+      "npm-chabokan": "https://mirror2.chabokan.net/npm",
+      "npm-devneeds": "https://npm.devneeds.ir",
+      "npm-iranserver": "https://npm.iranserver.com/repository/npm",
+      "npm-kargadan": "https://mirror.kargadan.ir/repository/npm-group",
+      "npm-liara": "https://package-mirror.liara.ir/repository/npm",
+      "npm-upstream": "https://registry.npmjs.org"
+    },
+    "nuget": {
+      "nuget-chabokan": "https://mirror2.chabokan.net/nuget/v3/index.json",
+      "nuget-devneeds": "https://nuget.devneeds.ir/",
+      "nuget-iranserver": "https://nuget.iranserver.com/repository/nuget/",
+      "nuget-kargadan": "https://mirror.kargadan.ir/repository/nuget-group/index.json",
+      "nuget-liara": "https://package-mirror.liara.ir/repository/nuget/index.json",
+      "nuget-runflare": "https://mirror-nuget.runflare.com/",
+      "nuget-upstream": "https://api.nuget.org/v3/index.json"
+    },
+    "pypi": {
+      "pypi-chabokan": "https://mirror2.chabokan.net/pypi",
+      "pypi-devneeds": "https://pypi.devneeds.ir",
+      "pypi-iranserver": "https://pypi.iranserver.com/repository/pypi",
+      "pypi-liara": "https://package-mirror.liara.ir/repository/pypi",
+      "pypi-pytorch": "https://download.pytorch.org/whl",
+      "pypi-runflare": "https://mirror-pypi.runflare.com",
+      "pypi-upstream": "https://pypi.org"
+    },
+    "raw": {
+      "go-sum-devneeds": {
+        "remote": "https://go-sum.devneeds.ir",
+        "blob": "go-sum"
       },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-cdnir",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://mirror.cdn.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
+      "go-sum-upstream": {
+        "remote": "https://sum.golang.org",
+        "blob": "go-sum"
       },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
+      "nodejs-runflare": {
+        "remote": "https://mirror-nodejs.runflare.com/dist/",
+        "blob": "nodejs"
       },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-chabokan",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://mirror2.chabokan.net",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-devneeds",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker.devneeds.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-dockerir",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://registry.docker.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-hamdocker",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://hub.hamdocker.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-hub",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://registry-1.docker.io",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "HUB",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-hyperclouds",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://mirrors.hyperclouds.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-iranserver",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker.iranserver.com",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-kargadan",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker-mirror.kargadan.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-kubarcloud",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker-mirror.kubarcloud.com",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-liara",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker-mirror.liara.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "docker-runflare",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://mirror-docker.runflare.com",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "ghcr-liara",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://ghcr-mirror.liara.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "ghcr-upstream",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://ghcr.io",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "k8s-liara",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://k8s-mirror.liara.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "k8s-runflare",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://mirror-k8s.runflare.com",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "k8s-upstream",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://registry.k8s.io",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "quay-kargadan",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://docker-quay-mirror.kargadan.ir",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "quay-upstream",
-      "format": "docker",
-      "blobStore": "docker",
-      "remoteUrl": "https://quay.io",
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": true,
-        "forceBasicAuth": false
-      },
-      "dockerProxy": {
-        "indexType": "REGISTRY",
-        "cacheForeignLayers": false
-      },
-      "writePolicy": "ALLOW"
-    },
-    {
-      "name": "go-devneeds",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://go.devneeds.ir",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-iranserver",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://go.iranserver.com/repository/go",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-kargadan",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/go-group",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-liara",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://package-mirror.liara.ir/repository/go",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-litebase",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://mirror.litebase.ir/repository/go",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-ompfinex",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://mirror.ompfinex.team/go",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-runflare",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://mirror-go.runflare.com",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "go-upstream",
-      "format": "go",
-      "blobStore": "go",
-      "remoteUrl": "https://proxy.golang.org",
-      "strictContentTypeValidation": true
-    },
-    {
-      "name": "npm-chabokan",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://mirror2.chabokan.net/npm",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "npm-devneeds",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://npm.devneeds.ir",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "npm-iranserver",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://npm.iranserver.com/repository/npm",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "npm-kargadan",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/npm-group",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "npm-liara",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://package-mirror.liara.ir/repository/npm",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "npm-upstream",
-      "format": "npm",
-      "blobStore": "npm",
-      "remoteUrl": "https://registry.npmjs.org",
-      "strictContentTypeValidation": true,
-      "npm": {
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "nuget-chabokan",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://mirror2.chabokan.net/nuget/v3/index.json",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-devneeds",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://nuget.devneeds.ir/",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-iranserver",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://nuget.iranserver.com/repository/nuget/",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-kargadan",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://mirror.kargadan.ir/repository/nuget-group/index.json",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-liara",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://package-mirror.liara.ir/repository/nuget/index.json",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-runflare",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://mirror-nuget.runflare.com/",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "nuget-upstream",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "remoteUrl": "https://api.nuget.org/v3/index.json",
-      "strictContentTypeValidation": true,
-      "nugetProxy": {
-        "queryCacheItemMaxAge": 3600,
-        "nugetVersion": "V3"
-      }
-    },
-    {
-      "name": "pypi-chabokan",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://mirror2.chabokan.net/pypi",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-devneeds",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://pypi.devneeds.ir",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-iranserver",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://pypi.iranserver.com/repository/pypi",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-liara",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://package-mirror.liara.ir/repository/pypi",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-pytorch",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://download.pytorch.org/whl",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-runflare",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://mirror-pypi.runflare.com",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "pypi-upstream",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "remoteUrl": "https://pypi.org",
-      "strictContentTypeValidation": true,
-      "pypi": {
-        "suffix": "/simple",
-        "removeQuarantinedVersions": false
-      }
-    },
-    {
-      "name": "go-sum-devneeds",
-      "format": "raw",
-      "blobStore": "go-sum",
-      "remoteUrl": "https://go-sum.devneeds.ir",
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
-      }
-    },
-    {
-      "name": "go-sum-upstream",
-      "format": "raw",
-      "blobStore": "go-sum",
-      "remoteUrl": "https://sum.golang.org",
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
-      }
-    },
-    {
-      "name": "nodejs-runflare",
-      "format": "raw",
-      "blobStore": "nodejs",
-      "remoteUrl": "https://mirror-nodejs.runflare.com/dist/",
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
-      }
-    },
-    {
-      "name": "nodejs-upstream",
-      "format": "raw",
-      "blobStore": "nodejs",
-      "remoteUrl": "https://nodejs.org/dist/",
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
+      "nodejs-upstream": {
+        "remote": "https://nodejs.org/dist/",
+        "blob": "nodejs"
       }
     }
-  ],
-  "groups": [
-    {
-      "name": "cargo",
-      "format": "cargo",
-      "blobStore": "cargo",
-      "members": [
+  },
+  "groups": {
+    "cargo": {
+      "cargo": [
         "cargo-devneeds",
         "cargo-iranserver",
         "cargo-upstream"
-      ],
-      "strictContentTypeValidation": true,
-      "cargo": {
-        "requireAuthentication": false
-      }
+      ]
     },
-    {
-      "name": "composer",
-      "format": "composer",
-      "blobStore": "composer",
-      "members": [
+    "composer": {
+      "composer": [
         "composer-liara",
         "composer-iranserver",
         "composer-chabokan",
@@ -791,14 +126,10 @@
         "composer-kargadan-original",
         "composer-runflare",
         "composer-upstream"
-      ],
-      "strictContentTypeValidation": true
+      ]
     },
-    {
-      "name": "docker",
-      "format": "docker",
-      "blobStore": "docker",
-      "members": [
+    "docker": {
+      "docker": [
         "docker-arvancloud",
         "docker-hamdocker",
         "docker-dockerir",
@@ -813,63 +144,25 @@
         "docker-runflare",
         "docker-hub"
       ],
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": true,
-        "forceBasicAuth": false
-      }
-    },
-    {
-      "name": "ghcr",
-      "format": "docker",
-      "blobStore": "docker",
-      "members": [
+      "ghcr": [
         "ghcr-liara",
         "ghcr-upstream",
         "docker"
       ],
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": true,
-        "forceBasicAuth": false
-      }
-    },
-    {
-      "name": "k8s",
-      "format": "docker",
-      "blobStore": "docker",
-      "members": [
+      "k8s": [
         "k8s-liara",
         "k8s-runflare",
         "k8s-upstream",
         "docker"
       ],
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": true,
-        "forceBasicAuth": false
-      }
-    },
-    {
-      "name": "quay",
-      "format": "docker",
-      "blobStore": "docker",
-      "members": [
+      "quay": [
         "quay-kargadan",
         "quay-upstream",
         "docker"
-      ],
-      "strictContentTypeValidation": true,
-      "docker": {
-        "v1Enabled": false,
-        "forceBasicAuth": true
-      }
+      ]
     },
-    {
-      "name": "go",
-      "format": "go",
-      "blobStore": "go",
-      "members": [
+    "go": {
+      "go": [
         "go-liara",
         "go-iranserver",
         "go-kargadan",
@@ -878,28 +171,20 @@
         "go-litebase",
         "go-runflare",
         "go-upstream"
-      ],
-      "strictContentTypeValidation": true
+      ]
     },
-    {
-      "name": "npm",
-      "format": "npm",
-      "blobStore": "npm",
-      "members": [
+    "npm": {
+      "npm": [
         "npm-iranserver",
         "npm-liara",
         "npm-devneeds",
         "npm-chabokan",
         "npm-kargadan",
         "npm-upstream"
-      ],
-      "strictContentTypeValidation": true
+      ]
     },
-    {
-      "name": "nuget",
-      "format": "nuget",
-      "blobStore": "nuget",
-      "members": [
+    "nuget": {
+      "nuget": [
         "nuget-liara",
         "nuget-kargadan",
         "nuget-chabokan",
@@ -907,14 +192,10 @@
         "nuget-iranserver",
         "nuget-runflare",
         "nuget-upstream"
-      ],
-      "strictContentTypeValidation": true
+      ]
     },
-    {
-      "name": "pypi",
-      "format": "pypi",
-      "blobStore": "pypi",
-      "members": [
+    "pypi": {
+      "pypi": [
         "pypi-chabokan",
         "pypi-liara",
         "pypi-iranserver",
@@ -922,34 +203,23 @@
         "pypi-runflare",
         "pypi-pytorch",
         "pypi-upstream"
-      ],
-      "strictContentTypeValidation": true
+      ]
     },
-    {
-      "name": "go-sum",
-      "format": "raw",
-      "blobStore": "go-sum",
-      "members": [
-        "go-sum-devneeds",
-        "go-sum-upstream"
-      ],
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
-      }
-    },
-    {
-      "name": "nodejs",
-      "format": "raw",
-      "blobStore": "nodejs",
-      "members": [
-        "nodejs-runflare",
-        "nodejs-upstream"
-      ],
-      "strictContentTypeValidation": false,
-      "raw": {
-        "contentDisposition": "INLINE"
+    "raw": {
+      "go-sum": {
+        "members": [
+          "go-sum-devneeds",
+          "go-sum-upstream"
+        ],
+        "blob": "go-sum"
+      },
+      "nodejs": {
+        "members": [
+          "nodejs-runflare",
+          "nodejs-upstream"
+        ],
+        "blob": "nodejs"
       }
     }
-  ]
+  }
 }
