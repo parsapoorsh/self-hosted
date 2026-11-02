@@ -1,0 +1,19 @@
+# Edge: Keycloak IdP (Anubis bypass).
+# Public: auth.__DOMAIN__ and auth.localhost
+
+server {
+    listen 80;
+    server_name auth.__DOMAIN__;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+    include /etc/nginx/self-hosted/snippets/keycloak-proxy.conf;
+}
+
+server {
+    listen 443 ssl;
+    server_name auth.__DOMAIN__ auth.localhost;
+
+    include /etc/nginx/self-hosted/snippets/edge-tls.conf;
+    include /etc/nginx/self-hosted/cloudflare.conf;
+    include /etc/nginx/self-hosted/snippets/keycloak-proxy.conf;
+}

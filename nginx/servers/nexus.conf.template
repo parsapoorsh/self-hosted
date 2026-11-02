@@ -1,0 +1,20 @@
+# Edge: Nexus Repository (Anubis bypass).
+# UI SSO via oauth2-proxy + Rut Auth; package APIs use Nexus basic auth.
+# HTTP: nexus.__DOMAIN__ only. nexus.localhost HTTP -> HTTPS (00-localhost-redirect).
+
+server {
+    listen 80;
+    server_name nexus.__DOMAIN__;
+
+    include /etc/nginx/self-hosted/cloudflare.conf;
+    include /etc/nginx/self-hosted/snippets/nexus-locations.conf;
+}
+
+server {
+    listen 443 ssl;
+    server_name nexus.__DOMAIN__ nexus.localhost;
+
+    include /etc/nginx/self-hosted/snippets/edge-tls.conf;
+    include /etc/nginx/self-hosted/cloudflare.conf;
+    include /etc/nginx/self-hosted/snippets/nexus-locations.conf;
+}

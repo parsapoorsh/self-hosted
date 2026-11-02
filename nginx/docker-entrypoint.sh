@@ -1,5 +1,5 @@
 #!/bin/sh
-# Ensure localhost cert, render templates (__DOMAIN__ -> DOMAIN), start nginx.
+# Ensure localhost cert, render server templates (__DOMAIN__ -> DOMAIN), start nginx.
 set -eu
 
 DOMAIN="${DOMAIN:-example.com}"
@@ -15,7 +15,7 @@ case "$DOMAIN" in
     ;;
 esac
 
-mkdir -p "$RUNTIME/snippets"
+mkdir -p "$RUNTIME/snippets" "$RUNTIME/servers"
 
 # --- localhost TLS (first start): cert/localhost/{fullchain,privkey}.pem ---
 ensure_localhost_cert() {
@@ -95,7 +95,6 @@ map \$ssl_server_name \$edge_cert_dir {
     localhost               ${CERTS}/localhost;
     ~\\.localhost\$          ${CERTS}/localhost;
 }
-# HTTP (no SNI): pick by Host header for any ssl_reject_handshake edge cases.
 map \$host \$edge_cert_dir_http {
     default                 ${CERTS}/${DOMAIN};
     localhost               ${CERTS}/localhost;
@@ -109,11 +108,14 @@ map \$host \$nexus_oauth2_upstream {
 }
 EOF
 
-# edge-tls is static (uses $edge_cert_dir); copy as-is.
-cp "$SRC/snippets/edge-tls.conf" "$RUNTIME/snippets/edge-tls.conf"
-
-sed "s/__DOMAIN__/${DOMAIN}/g" \
-  "$SRC/server.conf.template" >"$RUNTIME/server.conf"
+# Render each service template under servers/ (one file per service).
+# Name order: 00-localhost-redirect first, then the rest alphabetically.
+rm -f "$RUNTIME/servers/"*.conf
+for src in "$SRC"/servers/*.conf.template; do
+  [ -f "$src" ] || continue
+  base="$(basename "$src" .template)"
+  sed "s/__DOMAIN__/${DOMAIN}/g" "$src" >"$RUNTIME/servers/$base"
+done
 
 # Primary domain cert must exist (operator-provided or self-signed on host).
 if [ ! -f "$CERTS/$DOMAIN/fullchain.pem" ] || [ ! -f "$CERTS/$DOMAIN/privkey.pem" ]; then
@@ -121,6 +123,6 @@ if [ ! -f "$CERTS/$DOMAIN/fullchain.pem" ] || [ ! -f "$CERTS/$DOMAIN/privkey.pem
   exit 1
 fi
 
-echo "nginx DOMAIN=${DOMAIN} + localhost (auth/kiwix/cloud/nexus)"
+echo "nginx DOMAIN=${DOMAIN} + localhost servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf

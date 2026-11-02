@@ -1,0 +1,20 @@
+# Backend (:8080): Kiwix — reached via Anubis TARGET after edge challenge.
+
+server {
+    listen 8080;
+    server_name kiwix.__DOMAIN__ kiwix.localhost;
+
+    include /etc/nginx/self-hosted/snippets/backend-realip.conf;
+
+    location / {
+        set $kiwix_upstream http://kiwix-serve:9393;
+        proxy_pass $kiwix_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+    }
+}

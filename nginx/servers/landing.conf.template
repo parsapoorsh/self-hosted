@@ -1,0 +1,14 @@
+# Backend (:8080): static landing — Anubis TARGET for apex / www.
+
+server {
+    listen 8080 default_server;
+    server_name __DOMAIN__ www.__DOMAIN__ localhost www.localhost;
+
+    include /etc/nginx/self-hosted/snippets/backend-realip.conf;
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ =404;
+    }
+}

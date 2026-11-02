@@ -1,0 +1,7 @@
+# HTTP -> HTTPS for localhost names (Keycloak Secure cookies need TLS).
+server {
+    listen 80;
+    server_name localhost www.localhost
+                auth.localhost cloud.localhost nexus.localhost kiwix.localhost;
+    return 301 https://$host$request_uri;
+}
