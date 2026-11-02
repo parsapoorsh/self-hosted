@@ -51,7 +51,5 @@ create_app_db() {
 }
 
 # --- app databases ---
-# Keycloak IdP
-create_app_db keycloak keycloak "${KEYCLOAK_DB_PASSWORD:-}"
-# Nextcloud
+# Nextcloud (Authelia uses local sqlite under authelia_data)
 create_app_db nextcloud nextcloud "${NEXTCLOUD_DB_PASSWORD:-}"

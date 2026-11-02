@@ -1,9 +1,8 @@
-# Nextcloud constants (human admin + secrets from root .env / .env.secrets).
+# Nextcloud constants (admin + DB password from root .env / .env.secrets).
 POSTGRES_HOST=postgres
 POSTGRES_DB=nextcloud
 POSTGRES_USER=nextcloud
 REDIS_HOST=redis
-TRUSTED_PROXIES=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
-OIDC_PROVIDER_ID=Keycloak
+OVERWRITEPROTOCOL=http
+OIDC_PROVIDER_ID=Authelia
 OIDC_CLIENT_ID=nextcloud
-KEYCLOAK_REALM=home

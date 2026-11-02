@@ -21,7 +21,7 @@ services:
     depends_on:
       - anubis
       - kiwix
-      - keycloak
+      - authelia
       - nextcloud
       - nexus
       - nexus-oauth2-proxy
@@ -68,7 +68,6 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # postgres/init on first empty volume (from .env.secrets)
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -101,7 +100,7 @@ services:
       - ./nextcloud/env
     environment:
       POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
-      # Same human admin as Keycloak
+      # Same human admin as Authelia
       NEXTCLOUD_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       # Both names; do not set OVERWRITEHOST (breaks cloud.localhost).
@@ -109,10 +108,9 @@ services:
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-${APP_SCHEME:-http}://cloud.${DOMAIN:-example.com}}
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-home}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      OIDC_PROVIDER_ID: ${OIDC_PROVIDER_ID:-Keycloak}
+      OIDC_PROVIDER_ID: ${OIDC_PROVIDER_ID:-Authelia}
     volumes:
       - nextcloud_html:/var/www/html
       - ./nextcloud/hooks:/docker-entrypoint-hooks.d:ro
@@ -121,54 +119,47 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      keycloak:
+      authelia:
         condition: service_healthy
     networks:
       - self-hosted
     restart: unless-stopped
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.2
-    entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
+  authelia:
+    image: authelia/authelia:4.38.5
+    entrypoint: ["/bin/sh", "/init/docker-entrypoint.sh"]
     env_file:
-      - ./keycloak/env
+      - ./authelia/env
     environment:
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      # Temporary first-boot only; bootstrap creates permanent KEYCLOAK_ADMIN
-      KC_BOOTSTRAP_ADMIN_USERNAME: bootstrap-admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-home}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       NEXUS_OIDC_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
       NEXUS_OIDC_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      STORAGE_ENCRYPTION_KEY: ${STORAGE_ENCRYPTION_KEY}
+      OIDC_HMAC_SECRET: ${OIDC_HMAC_SECRET}
+      # Enables /app/healthcheck.sh
+      X_AUTHELIA_HEALTHCHECK: "1"
     volumes:
-      - ./keycloak/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
-      - ./keycloak/bootstrap-realm.sh:/init/bootstrap-realm.sh:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - ./authelia/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - authelia_data:/data
     networks:
       self-hosted:
         aliases:
           - auth.${DOMAIN:-example.com}
           - auth.localhost
+    mem_limit: 256m
     restart: unless-stopped
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          exec 3<>/dev/tcp/127.0.0.1/9000;
-          echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;
-          cat <&3 | grep -q 'UP'
+      test: ["CMD", "/app/healthcheck.sh"]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 90s
+      start_period: 40s
 
   nexus:
     image: sonatype/nexus3:3.97.3-ubi
@@ -176,7 +167,7 @@ services:
     env_file:
       - ./nexus/env
     environment:
-      # Same human admin as Keycloak (local API + Rut Auth username)
+      # Same human admin as Authelia (local API + Rut Auth username)
       NEXUS_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
       NEXUS_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     volumes:
@@ -202,7 +193,7 @@ services:
       retries: 20
       start_period: 180s
 
-  # Nexus UI SSO for nexus.<DOMAIN> (Keycloak OIDC via oauth2-proxy + Rut Auth)
+  # Nexus UI SSO for nexus.<DOMAIN> (Authelia OIDC via oauth2-proxy + Rut Auth)
   nexus-oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
     env_file:
@@ -213,15 +204,16 @@ services:
       OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
       OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-false}"
       OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
-      OAUTH2_PROXY_OIDC_ISSUER_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}
-      OAUTH2_PROXY_LOGIN_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/auth
+      # Issuer is always https (Authelia session cookies require TLS).
+      OAUTH2_PROXY_OIDC_ISSUER_URL: https://auth.${DOMAIN:-example.com}
+      OAUTH2_PROXY_LOGIN_URL: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
       OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
-      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/token
-      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/certs
-      OAUTH2_PROXY_PROFILE_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/userinfo
+      OAUTH2_PROXY_REDEEM_URL: http://authelia:9091/api/oidc/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://authelia:9091/jwks.json
+      OAUTH2_PROXY_PROFILE_URL: http://authelia:9091/api/oidc/userinfo
       OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DOMAIN:-example.com},${DOMAIN:-example.com}"
     depends_on:
-      keycloak:
+      authelia:
         condition: service_healthy
     networks:
       - self-hosted
@@ -237,7 +229,7 @@ services:
       OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
       OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
     depends_on:
-      keycloak:
+      authelia:
         condition: service_healthy
     networks:
       - self-hosted
@@ -252,3 +244,4 @@ volumes:
   postgres_data:
   nextcloud_html:
   nexus_data:
+  authelia_data:

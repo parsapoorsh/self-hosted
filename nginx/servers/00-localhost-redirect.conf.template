@@ -1,4 +1,4 @@
-# HTTP -> HTTPS for localhost names (Keycloak Secure cookies need TLS).
+# HTTP -> HTTPS for localhost names (Authelia / oauth2 Secure cookies need TLS).
 server {
     listen 80;
     server_name localhost www.localhost

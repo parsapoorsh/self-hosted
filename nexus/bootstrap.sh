@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent Nexus first-boot / every-start setup:
-#   admin password, CE EULA, anonymous access, Rut Auth (Keycloak SSO),
+#   admin password, CE EULA, anonymous access, Rut Auth (Authelia SSO),
 #   drop sample repos, apply catalog blob stores + repos.
 set -euo pipefail
 
@@ -218,10 +218,10 @@ def type = CapabilityType.capabilityType("rutauth")
 def props = ["httpHeader": "${HEADER_NAME}"] as Map<String, String>
 def existing = registry.all.find { it.context().type() == type }
 if (existing) {
-  registry.update(existing.context().id(), true, "Keycloak SSO via reverse proxy", props)
+  registry.update(existing.context().id(), true, "Authelia SSO via reverse proxy", props)
   return "updated:" + existing.context().id()
 }
-def ref = registry.add(type, true, "Keycloak SSO via reverse proxy", props)
+def ref = registry.add(type, true, "Authelia SSO via reverse proxy", props)
 return "created:" + ref.context().id()
 EOF
 )"

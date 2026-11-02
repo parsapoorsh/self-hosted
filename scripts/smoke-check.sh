@@ -37,27 +37,27 @@ container_ip() {
   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${id}"
 }
 
-echo "smoke: waiting for healthy keycloak + nexus..."
+echo "smoke: waiting for healthy authelia + nexus..."
 for i in $(seq 1 90); do
-  kc="$("${COMPOSE[@]}" ps keycloak --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
+  au="$("${COMPOSE[@]}" ps authelia --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
   nx="$("${COMPOSE[@]}" ps nexus --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
-  if [[ "${kc}" == *healthy* && "${nx}" == *healthy* ]]; then
+  if [[ "${au}" == *healthy* && "${nx}" == *healthy* ]]; then
     break
   fi
   sleep 5
 done
 
 # Wait until bootstraps have applied (API truths beat log lines).
-echo "smoke: waiting for keycloak realm + nexus catalog..."
+echo "smoke: waiting for authelia OIDC + nexus catalog..."
 for i in $(seq 1 90); do
   ready=1
-  KC_IP="$(container_ip keycloak || true)"
+  AU_IP="$(container_ip authelia || true)"
   NX_IP="$(container_ip nexus || true)"
-  if [[ -z "${KC_IP}" || -z "${NX_IP}" ]]; then
+  if [[ -z "${AU_IP}" || -z "${NX_IP}" ]]; then
     ready=0
   else
     code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
-      "http://${KC_IP}:8080/realms/home/.well-known/openid-configuration" 2>/dev/null || echo 000)"
+      "http://${AU_IP}:9091/.well-known/openid-configuration" 2>/dev/null || echo 000)"
     if [[ "${code}" != "200" ]]; then
       ready=0
     fi
@@ -74,17 +74,24 @@ for i in $(seq 1 90); do
   sleep 5
 done
 
-KC_IP="$(container_ip keycloak || true)"
-if [[ -n "${KC_IP}" ]]; then
+AU_IP="$(container_ip authelia || true)"
+if [[ -n "${AU_IP}" ]]; then
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-    "http://${KC_IP}:8080/realms/home/.well-known/openid-configuration" || echo 000)"
+    "http://${AU_IP}:9091/.well-known/openid-configuration" || echo 000)"
   if [[ "${code}" == "200" ]]; then
-    ok "keycloak realm home discovery"
+    ok "authelia OIDC discovery"
   else
-    bad "keycloak realm home discovery HTTP ${code}"
+    bad "authelia OIDC discovery HTTP ${code}"
+  fi
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+    "http://${AU_IP}:9091/api/health" || echo 000)"
+  if [[ "${code}" == "200" ]]; then
+    ok "authelia health"
+  else
+    bad "authelia health HTTP ${code}"
   fi
 else
-  bad "keycloak container IP"
+  bad "authelia container IP"
 fi
 
 NX_IP="$(container_ip nexus || true)"
@@ -140,7 +147,7 @@ fi
 
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Host: auth.localhost" \
-  "https://127.0.0.1/realms/home/.well-known/openid-configuration" || echo 000)"
+  "https://127.0.0.1/.well-known/openid-configuration" || echo 000)"
 if [[ "${code}" == "200" ]]; then
   ok "edge auth.localhost discovery"
 else
@@ -158,15 +165,22 @@ fi
 loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 10 \
   -H "Host: nexus.localhost" \
   "https://127.0.0.1/oauth2/start?rd=https://nexus.localhost/" || true)"
-if [[ "${loc}" == *"auth.localhost/realms/home"* ]]; then
-  ok "edge nexus oauth -> keycloak"
+if [[ "${loc}" == *"auth.localhost"* && "${loc}" == *"/api/oidc/authorization"* ]]; then
+  ok "edge nexus oauth -> authelia"
   pathq="${loc#https://auth.localhost}"
-  code="$(curl -sk -o /tmp/smoke-kc.html -w '%{http_code}' --max-time 10 \
-    -H "Host: auth.localhost" "https://127.0.0.1${pathq}" || echo 000)"
-  if [[ "${code}" == "200" ]] && grep -q 'Sign in' /tmp/smoke-kc.html 2>/dev/null; then
-    ok "keycloak login page"
+  pathq="${pathq%%\?*}"
+  # Login page is at /; authorization may redirect to login.
+  code="$(curl -sk -o /tmp/smoke-au.html -w '%{http_code}' --max-time 10 \
+    -H "Host: auth.localhost" -L "https://127.0.0.1${pathq:-/}" || echo 000)"
+  # Also try the portal root if authorization needs a session first.
+  if [[ "${code}" != "200" ]] || ! grep -qiE 'authelia|username|password|sign in|login' /tmp/smoke-au.html 2>/dev/null; then
+    code="$(curl -sk -o /tmp/smoke-au.html -w '%{http_code}' --max-time 10 \
+      -H "Host: auth.localhost" "https://127.0.0.1/" || echo 000)"
+  fi
+  if [[ "${code}" == "200" ]] && grep -qiE 'authelia|username|password|sign in|login' /tmp/smoke-au.html 2>/dev/null; then
+    ok "authelia login page"
   else
-    bad "keycloak login page HTTP ${code}"
+    bad "authelia login page HTTP ${code}"
   fi
 else
   bad "edge nexus oauth redirect='${loc}'"

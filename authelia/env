@@ -1,0 +1,4 @@
+# Authelia constants (human admin + secrets from root .env / .env.secrets).
+# OIDC clients nextcloud + nexus; dual cookie domains DOMAIN + localhost.
+OIDC_CLIENT_ID=nextcloud
+NEXUS_OIDC_CLIENT_ID=nexus
