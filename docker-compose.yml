@@ -23,6 +23,8 @@ services:
       - kiwix
       - keycloak
       - nextcloud
+      - nexus
+      - nexus-oauth2-proxy
     restart: unless-stopped
 
   # Bot challenge filter: nginx (TLS) -> anubis -> nginx :8080 (HTTP routing)
@@ -166,6 +168,8 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-home}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      NEXUS_OIDC_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
+      NEXUS_OIDC_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
     volumes:
       - ./keycloak/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
       - ./keycloak/bootstrap-realm.sh:/init/bootstrap-realm.sh:ro
@@ -190,6 +194,105 @@ services:
       retries: 12
       start_period: 90s
 
+  # Artifact registry. Public URL: ${APP_SCHEME}://nexus.${DOMAIN}/
+  # No default repos (skipDefaultRepositories). UI SSO: Keycloak via oauth2-proxy + Rut Auth.
+  nexus:
+    image: sonatype/nexus3:3.76.0
+    environment:
+      # Skip sample repos; allow one-shot Groovy for Rut Auth bootstrap; modest heap.
+      INSTALL4J_ADD_VM_PARAMS: >-
+        -Xms512m -Xmx1536m -XX:MaxDirectMemorySize=2g
+        -Dnexus.skipDefaultRepositories=true
+        -Dnexus.scripts.allowCreation=true
+        -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+      NEXUS_CONTEXT_PATH: /
+    volumes:
+      - nexus_data:/nexus-data
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    # Clean Orient/H2 flush on stop
+    stop_grace_period: 120s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -sf http://127.0.0.1:8081/service/rest/v1/status
+          || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  # Sets admin password, Rut Auth header, realms; deletes any leftover default repos.
+  nexus-bootstrap:
+    image: alpine:3.21
+    environment:
+      NEXUS_URL: http://nexus:8081
+      NEXUS_ADMIN_USER: ${NEXUS_ADMIN_USER:-admin}
+      NEXUS_ADMIN_PASSWORD: ${NEXUS_ADMIN_PASSWORD}
+      NEXUS_DATA_DIR: /nexus-data
+      NEXUS_RUT_HEADER: X-Remote-User
+    volumes:
+      - ./nexus/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - nexus_data:/nexus-data:ro
+    # Alpine /bin/sh is ash (no arrays); script needs bash + curl + jq.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache bash curl jq >/dev/null
+        exec bash /bootstrap/bootstrap.sh
+    depends_on:
+      nexus:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    restart: unless-stopped
+
+  # Keycloak OIDC front for Nexus UI (nginx auth_request). Package APIs skip this.
+  # Discovery is skipped: browser auth uses auth.<DOMAIN>, token/jwks use keycloak:8080
+  # (auth.<DOMAIN> is a Keycloak network alias on :8080, not :80).
+  nexus-oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
+    environment:
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      OAUTH2_PROXY_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
+      OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_LOGIN_URL: ${APP_SCHEME:-http}://auth.${DOMAIN:-example.com}/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/certs
+      OAUTH2_PROXY_PROFILE_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM:-home}/protocol/openid-connect/userinfo
+      OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_UPSTREAMS: static://202
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      # preferred_username matches Nexus local admin (KEYCLOAK_ADMIN / NEXUS_ADMIN_USER).
+      OAUTH2_PROXY_OIDC_EMAIL_CLAIM: email
+      OAUTH2_PROXY_USER_ID_CLAIM: preferred_username
+      OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_NAME: _nexus_oauth2
+      OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-false}"
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
+      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
+      OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DOMAIN:-example.com},${DOMAIN:-example.com}"
+      OAUTH2_PROXY_SCOPE: openid email profile
+      # Keycloak access tokens often use aud=account; allow that beside client id.
+      OAUTH2_PROXY_OIDC_EXTRA_AUDIENCES: account
+      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    restart: unless-stopped
+
 networks:
   self-hosted:
     name: self-hosted
@@ -198,3 +301,4 @@ networks:
 volumes:
   postgres_data:
   nextcloud_html:
+  nexus_data:
