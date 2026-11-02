@@ -48,6 +48,13 @@ That account works for:
 - Nextcloud (local admin + Keycloak OIDC)
 - Nexus UI (Keycloak OIDC) and Nexus REST basic auth
 
+Nexus bootstrap (every start) also:
+
+- accepts the Community EULA
+- enables anonymous read access
+- creates Rut Auth for Keycloak SSO
+- applies `nexus/catalog.json` (blob stores + hosted/proxy/group repos)
+
 ## Configuration
 
 ### Root `.env` (you edit this)
