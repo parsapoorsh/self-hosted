@@ -23,17 +23,17 @@ kcadm_login() {
 
 # Run bootstrap once Keycloak accepts admin API (same process tree).
 (
-  echo "keycloak: bootstrap waiting for admin API"
+  echo "keycloak: bootstrap waiting for admin API" >&2
   for i in $(seq 1 90); do
     if kcadm_login "${ADMIN_USER}" "${ADMIN_PASS}"; then
-      echo "keycloak: bootstrap authenticated as ${ADMIN_USER} (try ${i})"
+      echo "keycloak: bootstrap authenticated as ${ADMIN_USER} (try ${i})" >&2
       export KEYCLOAK_SERVER="${SERVER}"
       exec /bin/bash "${BOOTSTRAP}"
     fi
     if [[ "${BOOTSTRAP_USER}" != "${ADMIN_USER}" ]] \
       && kcadm_login "${BOOTSTRAP_USER}" "${BOOTSTRAP_PASS}"
     then
-      echo "keycloak: bootstrap authenticated as ${BOOTSTRAP_USER} (try ${i})"
+      echo "keycloak: bootstrap authenticated as ${BOOTSTRAP_USER} (try ${i})" >&2
       export KEYCLOAK_SERVER="${SERVER}"
       exec /bin/bash "${BOOTSTRAP}"
     fi
