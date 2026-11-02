@@ -96,9 +96,25 @@ def expand_catalog(raw: dict[str, Any]) -> tuple[
     list[str],
     list[dict[str, Any]],
     list[dict[str, Any]],
+    list[dict[str, Any]],
 ]:
-    """Turn compact catalog into flat proxy/group entries."""
+    """Turn compact catalog into flat hosted/proxy/group entries."""
     blobs = list(raw.get("blobStores") or [])
+
+    hosted: list[dict[str, Any]] = []
+    for fmt, items in (raw.get("hosted") or {}).items():
+        if isinstance(items, list):
+            specs = {name: {} for name in items}
+        else:
+            specs = items
+        for name, spec in specs.items():
+            extra = spec if isinstance(spec, dict) else {}
+            hosted.append({
+                "name": name,
+                "format": fmt,
+                "blobStore": extra.get("blob", fmt),
+                "writePolicy": extra.get("writePolicy", "ALLOW"),
+            })
 
     proxies: list[dict[str, Any]] = []
     for fmt, items in (raw.get("proxies") or {}).items():
@@ -133,7 +149,31 @@ def expand_catalog(raw: dict[str, Any]) -> tuple[
                 "members": members,
             })
 
-    return blobs, proxies, groups
+    return blobs, hosted, proxies, groups
+
+
+def hosted_payload(entry: dict[str, Any]) -> dict[str, Any]:
+    fmt = entry["format"]
+    strict = fmt != "raw"
+    body: dict[str, Any] = {
+        "name": entry["name"],
+        "online": True,
+        "storage": {
+            "blobStoreName": entry["blobStore"],
+            "strictContentTypeValidation": strict,
+            "writePolicy": entry.get("writePolicy", "ALLOW"),
+        },
+        "component": {
+            "proprietaryComponents": False,
+        },
+    }
+    if fmt == "docker":
+        body["docker"] = dict(DOCKER_PROXY)
+    if fmt == "raw":
+        body["raw"] = {"contentDisposition": "INLINE"}
+    if fmt == "cargo":
+        body["cargo"] = {"requireAuthentication": False}
+    return body
 
 
 def proxy_payload(entry: dict[str, Any]) -> dict[str, Any]:
@@ -253,44 +293,49 @@ def ensure_blobstores(nx: Nexus, names: list[str]) -> None:
             raise RuntimeError(f"blobstore {name} HTTP {code}: {payload}")
 
 
-def create_proxy(nx: Nexus, entry: dict[str, Any]) -> bool:
-    name = entry["name"]
-    fmt = entry["format"]
-    body = proxy_payload(entry)
-    code, payload = nx.request(
-        "POST",
-        f"/service/rest/v1/repositories/{fmt}/proxy",
-        body,
-    )
-    if code in (200, 201):
-        log(f"proxy created {name}")
-        return True
-    log(f"proxy create failed {name} HTTP {code}: {payload}")
-    return False
-
-
-def ensure_proxies(nx: Nexus, items: list[dict[str, Any]]) -> list[str]:
+def ensure_typed_repos(
+    nx: Nexus,
+    typ: str,
+    items: list[dict[str, Any]],
+    payload_fn,
+) -> list[str]:
     failed: list[str] = []
     for entry in items:
         name = entry["name"]
         fmt = entry["format"]
-        body = proxy_payload(entry)
+        body = payload_fn(entry)
 
-        if nx.exists_typed(fmt, "proxy", name):
+        if nx.exists_typed(fmt, typ, name):
             code, payload = nx.request(
                 "PUT",
-                f"/service/rest/v1/repositories/{fmt}/proxy/{name}",
+                f"/service/rest/v1/repositories/{fmt}/{typ}/{name}",
                 body,
             )
             if code in (200, 204):
-                log(f"proxy updated {name}")
+                log(f"{typ} updated {name}")
             else:
-                log(f"proxy update skipped {name} HTTP {code}: {payload}")
+                log(f"{typ} update skipped {name} HTTP {code}: {payload}")
             continue
 
-        if not create_proxy(nx, entry):
+        code, payload = nx.request(
+            "POST",
+            f"/service/rest/v1/repositories/{fmt}/{typ}",
+            body,
+        )
+        if code in (200, 201):
+            log(f"{typ} created {name}")
+        else:
+            log(f"{typ} create failed {name} HTTP {code}: {payload}")
             failed.append(name)
     return failed
+
+
+def ensure_hosted(nx: Nexus, items: list[dict[str, Any]]) -> list[str]:
+    return ensure_typed_repos(nx, "hosted", items, hosted_payload)
+
+
+def ensure_proxies(nx: Nexus, items: list[dict[str, Any]]) -> list[str]:
+    return ensure_typed_repos(nx, "proxy", items, proxy_payload)
 
 
 def available_members(
@@ -300,6 +345,9 @@ def available_members(
 ) -> list[str]:
     out: list[str] = []
     for name in members:
+        if nx.exists_typed(fmt, "hosted", name):
+            out.append(name)
+            continue
         if nx.exists_typed(fmt, "proxy", name):
             out.append(name)
             continue
@@ -359,7 +407,7 @@ def main() -> int:
     with open(catalog_path, encoding="utf-8") as fh:
         raw = json.load(fh)
 
-    blobs, proxies, groups = expand_catalog(raw)
+    blobs, hosted, proxies, groups = expand_catalog(raw)
 
     nx = Nexus(
         env("NEXUS_URL", "http://127.0.0.1:8081"),
@@ -369,14 +417,17 @@ def main() -> int:
 
     ensure_anonymous(nx)
     ensure_blobstores(nx, blobs)
+    hosted_failed = ensure_hosted(nx, hosted)
     proxy_failed = ensure_proxies(nx, proxies)
     group_failed = ensure_groups(nx, groups)
 
     log(
         "done "
         f"blobs={len(blobs)} "
+        f"hosted={len(hosted)} "
         f"proxies={len(proxies)} "
         f"groups={len(groups)} "
+        f"hosted_failed={hosted_failed} "
         f"proxy_failed={proxy_failed} "
         f"group_failed={group_failed}"
     )

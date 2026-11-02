@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent Nexus bootstrap: admin password, Rut Auth (Keycloak via proxy),
-# drop default repositories, ensure catalog blob stores + proxies + groups.
+# drop default repositories, ensure catalog blob stores + hosted/proxies/groups.
 # Runs once from docker-entrypoint background job.
 #
 # Rut Auth capability is created via Groovy (OSS has no Capabilities REST API).
@@ -197,7 +197,7 @@ ensure_catalog_repos() {
     return 1
   fi
 
-  log "ensuring blob stores and repositories from ${catalog}"
+  log "ensuring blob stores + hosted/proxy/group repos from ${catalog}"
   NEXUS_URL="${NEXUS_URL}" \
     NEXUS_ADMIN_USER="${ADMIN_USER}" \
     NEXUS_ADMIN_PASSWORD="${pass}" \
