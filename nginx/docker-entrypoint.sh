@@ -24,6 +24,6 @@ sed "s/__DOMAIN__/${DOMAIN}/g" \
 sed "s/__DOMAIN__/${DOMAIN}/g" \
   "$SRC/server.conf.template" >"$RUNTIME/server.conf"
 
-echo "nginx DOMAIN=${DOMAIN} (auth/kiwix/cloud.${DOMAIN})"
+echo "nginx DOMAIN=${DOMAIN} (auth/kiwix/cloud/nexus.${DOMAIN})"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf
