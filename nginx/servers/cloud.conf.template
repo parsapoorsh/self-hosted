@@ -1,14 +1,12 @@
 # Edge: Nextcloud (Anubis bypass).
 # Public: cloud.__DOMAIN__ and cloud.localhost
 
+# TEMPORARY: HTTP -> HTTPS for public hosts.
 server {
     listen 80;
     server_name cloud.__DOMAIN__;
 
-    include /etc/nginx/self-hosted/cloudflare.conf;
-
-    client_max_body_size 16G;
-    include /etc/nginx/self-hosted/nextcloud.conf;
+    return 301 https://$host$request_uri;
 }
 
 server {

@@ -1,12 +1,12 @@
 # Edge: Anubis bot filter (default). Protected hosts only.
 # DOMAIN on :80; DOMAIN + localhost on :443 (localhost HTTP redirected elsewhere).
 
+# TEMPORARY: HTTP -> HTTPS for public hosts (remove when plain HTTP is needed again).
 server {
     listen 80 default_server;
     server_name __DOMAIN__ www.__DOMAIN__ kiwix.__DOMAIN__;
 
-    include /etc/nginx/self-hosted/cloudflare.conf;
-    include /etc/nginx/self-hosted/snippets/anubis-proxy.conf;
+    return 301 https://$host$request_uri;
 }
 
 server {
