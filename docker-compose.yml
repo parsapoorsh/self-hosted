@@ -126,7 +126,7 @@ services:
 
   # Authentik IdP (OIDC + self-registration). Public host is auth.${DOMAIN}.
   authentik:
-    image: ghcr.io/goauthentik/server:2025.10.4
+    image: ghcr.io/goauthentik/server:2026.8.5
     command: server
     env_file:
       - ./authentik/env
@@ -171,7 +171,7 @@ services:
       start_period: 60s
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2025.10.4
+    image: ghcr.io/goauthentik/server:2026.8.5
     command: worker
     user: root
     env_file:
