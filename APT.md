@@ -147,7 +147,7 @@ Without the group, point at one Nexus apt proxy:
 
 ```bash
 # example only — prefer the group for normal use
-deb ${NEXUS}/repository/ubuntu-arvancloud jammy main universe
+deb ${NEXUS}/repository/ubuntu-cdnir jammy main universe
 deb ${NEXUS}/repository/debian-liara bookworm main
 deb ${NEXUS}/repository/kali-kargadan kali-rolling main contrib non-free non-free-firmware
 ```

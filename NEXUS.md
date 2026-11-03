@@ -248,7 +248,7 @@ EOF
 sudo apt-get update
 ```
 
-Suites and member order live in `nexus/catalog.json` → `aptGroup`. Individual Nexus apt proxies remain at `/repository/<name>/` (e.g. `ubuntu-arvancloud`, `debian-liara`).
+Suites and member order live in `nexus/catalog.json` → `aptGroup`. Individual Nexus apt proxies remain at `/repository/<name>/` (e.g. `ubuntu-cdnir`, `debian-liara`).
 
 Merge is family-scoped (ubuntu / debian / kali members only for matching suites), capped by `maxMembersPerSuite` (default 3), and keeps a **union of versions** so pins/downgrades still work while a member has the old build.
 
