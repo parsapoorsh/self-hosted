@@ -1,0 +1,230 @@
+{
+  "blobStores": [
+    "alpine",
+    "cargo",
+    "docker",
+    "go",
+    "go-sum",
+    "huggingface",
+    "nodejs",
+    "npm",
+    "nuget",
+    "pypi"
+  ],
+  "proxies": {
+    "alpine": {
+      "alpine-arvancloud": "https://mirror.arvancloud.ir/alpine",
+      "alpine-iut": "http://repo.iut.ac.ir/repo/alpine/",
+      "alpine-kargadan": "https://mirror.kargadan.ir/repository/alpine-proxy/",
+      "alpine-liara": "https://linux-mirror.liara.ir/repository/alpine/",
+      "alpine-runflare": "http://mirror-linux.runflare.com/alpine",
+      "alpine-upstream": "https://dl-cdn.alpinelinux.org/alpine/"
+    },
+    "cargo": {
+      "cargo-devneeds": "https://cargo.devneeds.ir/repository/cargo/",
+      "cargo-iranserver": "https://cargo.iranserver.com/repository/cargo/",
+      "cargo-upstream": "https://index.crates.io/"
+    },
+    "docker": {
+      "docker-cdnir": "https://mirror.cdn.ir",
+      "docker-arvancloud": "https://docker.arvancloud.ir",
+      "docker-chabokan": "https://mirror2.chabokan.net",
+      "docker-devneeds": "https://docker.devneeds.ir",
+      "docker-dockerir": "https://registry.docker.ir",
+      "docker-hamdocker": "https://hub.hamdocker.ir",
+      "docker-hub": {
+        "remote": "https://registry-1.docker.io",
+        "index": "HUB"
+      },
+      "docker-hyperclouds": "https://mirrors.hyperclouds.ir",
+      "docker-iranserver": "https://docker.iranserver.com",
+      "docker-kargadan": "https://docker-mirror.kargadan.ir",
+      "docker-kubarcloud": "https://docker-mirror.kubarcloud.com",
+      "docker-liara": "https://docker-mirror.liara.ir",
+      "docker-runflare": "https://mirror-docker.runflare.com",
+      "ghcr-liara": "https://ghcr-mirror.liara.ir",
+      "ghcr-upstream": "https://ghcr.io",
+      "k8s-liara": "https://k8s-mirror.liara.ir",
+      "k8s-runflare": "https://mirror-k8s.runflare.com",
+      "k8s-upstream": "https://registry.k8s.io",
+      "quay-kargadan": "https://docker-quay-mirror.kargadan.ir",
+      "quay-upstream": "https://quay.io"
+    },
+    "go": {
+      "go-devneeds": "https://go.devneeds.ir",
+      "go-iranserver": "https://go.iranserver.com/repository/go",
+      "go-kargadan": "https://mirror.kargadan.ir/repository/go-group",
+      "go-liara": "https://package-mirror.liara.ir/repository/go",
+      "go-litebase": "https://mirror.litebase.ir/repository/go",
+      "go-ompfinex": "https://mirror.ompfinex.team/go",
+      "go-runflare": "https://mirror-go.runflare.com",
+      "go-upstream": "https://proxy.golang.org"
+    },
+    "huggingface": {
+      "huggingface-devneeds": "https://hf.devneeds.ir/",
+      "huggingface-upstream": "https://huggingface.co"
+    },
+    "npm": {
+      "npm-chabokan": "https://mirror2.chabokan.net/npm",
+      "npm-devneeds": "https://npm.devneeds.ir",
+      "npm-iranserver": "https://npm.iranserver.com/repository/npm",
+      "npm-kargadan": "https://mirror.kargadan.ir/repository/npm-group",
+      "npm-liara": "https://package-mirror.liara.ir/repository/npm",
+      "npm-upstream": "https://registry.npmjs.org"
+    },
+    "nuget": {
+      "nuget-chabokan": "https://mirror2.chabokan.net/nuget/v3/index.json",
+      "nuget-devneeds": "https://nuget.devneeds.ir/",
+      "nuget-iranserver": "https://nuget.iranserver.com/repository/nuget/",
+      "nuget-kargadan": "https://mirror.kargadan.ir/repository/nuget-group/index.json",
+      "nuget-liara": "https://package-mirror.liara.ir/repository/nuget/index.json",
+      "nuget-runflare": "https://mirror-nuget.runflare.com/",
+      "nuget-upstream": "https://api.nuget.org/v3/index.json"
+    },
+    "pypi": {
+      "pypi-chabokan": "https://mirror2.chabokan.net/pypi",
+      "pypi-devneeds": "https://pypi.devneeds.ir",
+      "pypi-iranserver": "https://pypi.iranserver.com/repository/pypi",
+      "pypi-liara": "https://package-mirror.liara.ir/repository/pypi",
+      "pypi-pytorch": {
+        "remote": "https://download.pytorch.org",
+        "indexPath": "/whl"
+      },
+      "pypi-runflare": "https://mirror-pypi.runflare.com",
+      "pypi-upstream": "https://pypi.org"
+    },
+    "raw": {
+      "go-sum-devneeds": {
+        "remote": "https://go-sum.devneeds.ir",
+        "blob": "go-sum"
+      },
+      "go-sum-upstream": {
+        "remote": "https://sum.golang.org",
+        "blob": "go-sum"
+      },
+      "nodejs-runflare": {
+        "remote": "https://mirror-nodejs.runflare.com/dist/",
+        "blob": "nodejs"
+      },
+      "nodejs-upstream": {
+        "remote": "https://nodejs.org/dist/",
+        "blob": "nodejs"
+      }
+    }
+  },
+  "hosted": {
+    "pypi": [
+      "pypi-hosted"
+    ]
+  },
+  "groups": {
+    "alpine": {
+      "alpine": [
+        "alpine-arvancloud",
+        "alpine-kargadan",
+        "alpine-liara",
+        "alpine-runflare",
+        "alpine-iut",
+        "alpine-upstream"
+      ]
+    },
+    "cargo": {
+      "cargo": [
+        "cargo-devneeds",
+        "cargo-iranserver",
+        "cargo-upstream"
+      ]
+    },
+    "docker": {
+      "docker": [
+        "docker-cdnir",
+        "docker-arvancloud",
+        "docker-hamdocker",
+        "docker-dockerir",
+        "docker-iranserver",
+        "docker-chabokan",
+        "docker-liara",
+        "docker-kargadan",
+        "docker-kubarcloud",
+        "docker-hyperclouds",
+        "docker-devneeds",
+        "docker-runflare",
+        "docker-hub"
+      ],
+      "ghcr": [
+        "ghcr-liara",
+        "ghcr-upstream"
+      ],
+      "k8s": [
+        "k8s-liara",
+        "k8s-runflare",
+        "k8s-upstream"
+      ],
+      "quay": [
+        "quay-kargadan",
+        "quay-upstream"
+      ]
+    },
+    "go": {
+      "go": [
+        "go-liara",
+        "go-iranserver",
+        "go-kargadan",
+        "go-devneeds",
+        "go-ompfinex",
+        "go-litebase",
+        "go-runflare",
+        "go-upstream"
+      ]
+    },
+    "npm": {
+      "npm": [
+        "npm-iranserver",
+        "npm-liara",
+        "npm-devneeds",
+        "npm-chabokan",
+        "npm-kargadan",
+        "npm-upstream"
+      ]
+    },
+    "nuget": {
+      "nuget": [
+        "nuget-liara",
+        "nuget-kargadan",
+        "nuget-chabokan",
+        "nuget-devneeds",
+        "nuget-iranserver",
+        "nuget-runflare",
+        "nuget-upstream"
+      ]
+    },
+    "pypi": {
+      "pypi": [
+        "pypi-hosted",
+        "pypi-chabokan",
+        "pypi-liara",
+        "pypi-iranserver",
+        "pypi-devneeds",
+        "pypi-runflare",
+        "pypi-pytorch",
+        "pypi-upstream"
+      ]
+    },
+    "raw": {
+      "go-sum": {
+        "members": [
+          "go-sum-devneeds",
+          "go-sum-upstream"
+        ],
+        "blob": "go-sum"
+      },
+      "nodejs": {
+        "members": [
+          "nodejs-runflare",
+          "nodejs-upstream"
+        ],
+        "blob": "nodejs"
+      }
+    }
+  }
+}
