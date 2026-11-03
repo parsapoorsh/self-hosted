@@ -8,10 +8,9 @@ MM_BLEVESETTINGS_INDEXDIR=/mattermost/bleve-indexes
 MM_GITLABSETTINGS_ENABLE=true
 MM_GITLABSETTINGS_BUTTONTEXT=Log in with Authelia
 MM_GITLABSETTINGS_BUTTONCOLOR=#000000
-# openid switches MM enterprise to OpenID provider (uses preferred_username).
-# Skip profile so Authelia does not send preferred_username=admin; mattermost
-# scope supplies preferred_username/username as sysadmin via claims_policy.
-MM_GITLABSETTINGS_SCOPE=openid email mattermost
+# openid → enterprise OpenID provider (username from preferred_username or
+# email local-part). Authelia mattermost scope remaps admin email → sysadmin@.
+MM_GITLABSETTINGS_SCOPE=openid mattermost
 
 # Authelia-only auth: no local email/username create-account or password login.
 # EnableUserCreation stays true so first Authelia login can create the MM user.

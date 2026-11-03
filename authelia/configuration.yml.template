@@ -7,11 +7,16 @@ log:
   level: info
   format: text
 
-# Mattermost reserves the username "admin" (CleanUsername strips it). Map to sysadmin.
+# Mattermost enterprise OpenID path (scope contains "openid"):
+#   Username = preferred_username OR email local-part, then CleanUsername().
+# Authelia hardcodes preferred_username → real username (cannot remap).
+# So omit preferred_username and remap email local-part for admin → sysadmin@DOMAIN.
 definitions:
   user_attributes:
     mattermost_username:
       expression: 'username == "admin" ? "sysadmin" : username'
+    mattermost_email:
+      expression: 'username == "admin" ? "sysadmin@__DOMAIN__" : email'
 
 server:
   address: 'tcp://0.0.0.0:9091/'
@@ -92,29 +97,27 @@ __JWKS_PEM__
         - introspection
         - userinfo
       allowed_origins_from_client_redirect_uris: true
-    # Mattermost: scope contains "openid" so enterprise uses the OpenID provider,
-    # which sets Username from preferred_username (not GitLab "username").
-    # preferred_username + username both use mattermost_username (admin → sysadmin).
+    # Mattermost OpenID provider ignores custom "username"; uses preferred_username
+    # (hardcoded to Authelia username in Authelia) or email local-part. Omit
+    # preferred_username; remap email so admin → sysadmin@DOMAIN.
     claims_policies:
       mattermost:
-        # MM OpenID path may read preferred_username from the ID token.
         id_token:
-          - 'preferred_username'
-          - 'username'
           - 'email'
+          - 'email_verified'
           - 'name'
+          - 'username'
         custom_claims:
           username:
             name: 'username'
             attribute: 'mattermost_username'
-          preferred_username:
-            name: 'preferred_username'
-            attribute: 'mattermost_username'
+          email:
+            name: 'email'
+            attribute: 'mattermost_email'
     scopes:
       mattermost:
         claims:
           - 'username'
-          - 'preferred_username'
           - 'email'
           - 'email_verified'
           - 'name'
@@ -147,7 +150,7 @@ __JWKS_PEM__
         token_endpoint_auth_method: client_secret_basic
         userinfo_signed_response_alg: none
       - client_id: '__NEXUS_OIDC_CLIENT_ID__'
-        client_name: 'Nexus'
+        client_name: 'Nexspence'
         client_secret: '__NEXUS_OIDC_CLIENT_SECRET_HASH__'
         public: false
         authorization_policy: one_factor
@@ -156,9 +159,9 @@ __JWKS_PEM__
         require_pkce: true
         pkce_challenge_method: 'S256'
         redirect_uris:
-          - 'https://nexus.__DOMAIN__/oauth2/callback'
-          - 'http://nexus.__DOMAIN__/oauth2/callback'
-          - 'https://nexus.localhost/oauth2/callback'
+          - 'https://nexus.__DOMAIN__/api/v1/auth/oidc/callback'
+          - 'http://nexus.__DOMAIN__/api/v1/auth/oidc/callback'
+          - 'https://nexus.localhost/api/v1/auth/oidc/callback'
         scopes:
           - openid
           - profile
@@ -186,11 +189,10 @@ __JWKS_PEM__
           - 'https://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'http://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'https://mattermost.localhost/login/gitlab/complete'
-        # No "profile" — that would emit Authelia preferred_username=admin and
-        # override our sysadmin mapping. email + mattermost cover MM needs.
+        # openid only + mattermost (no profile/email scopes — those force
+        # preferred_username=admin and email=admin@… via Authelia defaults).
         scopes:
           - openid
-          - email
           - mattermost
         response_types:
           - code
