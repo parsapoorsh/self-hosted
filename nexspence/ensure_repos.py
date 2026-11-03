@@ -334,7 +334,7 @@ def ensure_typed_repos(
                 else:
                     log(f"{typ} update skipped {name} HTTP {code}: {payload}")
                 continue
-            # Name reused with a different type/format (e.g. apt group → proxy).
+            # Name reused with a different type/format.
             log(
                 f"recreate {name}: was format={existing.get('format')} "
                 f"type={existing.get('type')}, want {fmt}/{typ}"

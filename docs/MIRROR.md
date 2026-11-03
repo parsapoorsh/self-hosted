@@ -126,49 +126,6 @@ apk update
 
 ---
 
-## APT (Debian / Ubuntu)
-
-We publish **main** and **security** as separate archive roots. These paths are
-**APT proxies** (pass-through of upstream signed `InRelease`). Nexspence APT
-groups synthesize their own unsigned index, which breaks `apt update`
-(`Clearsigned file isn't valid, got 'NOSPLIT'`), so public names are single
-proxies. Alternate regional proxies stay available under their own names
-(e.g. `debian-fastly`, `debian-security-upstream`, `ubuntu-arvancloud`).
-
-**Debian** (replace `bookworm` with your suite):
-
-```bash
-sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
-deb https://mirror.${domain}/repository/debian bookworm main contrib non-free non-free-firmware
-deb https://mirror.${domain}/repository/debian bookworm-updates main contrib non-free non-free-firmware
-deb https://mirror.${domain}/repository/debian bookworm-backports main contrib non-free non-free-firmware
-deb https://mirror.${domain}/repository/debian-security bookworm-security main contrib non-free non-free-firmware
-EOF
-sudo apt-get update
-```
-
-**Ubuntu** (replace `noble` with your suite). Ubuntu puts security under the
-same archive root as main, so one proxy is enough:
-
-```bash
-sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
-deb https://mirror.${domain}/repository/ubuntu noble main restricted universe multiverse
-deb https://mirror.${domain}/repository/ubuntu noble-updates main restricted universe multiverse
-deb https://mirror.${domain}/repository/ubuntu noble-backports main restricted universe multiverse
-deb https://mirror.${domain}/repository/ubuntu noble-security main restricted universe multiverse
-EOF
-sudo apt-get update
-```
-
-Browse:
-- Debian main: `https://mirror.${domain}/repository/debian/dists/`
-- Debian security: `https://mirror.${domain}/repository/debian-security/dists/`
-- Ubuntu: `https://mirror.${domain}/repository/ubuntu/dists/`
-
-If apt complains about HTTPS/TLS for a lab CA, install the mirror CA or use `Acquire::https::Verify-Peer "false"` only in controlled labs.
-
----
-
 ## Hugging Face
 
 ```bash
@@ -198,8 +155,5 @@ curl -fsS -o /dev/null -w "%{http_code}\n" https://mirror.${domain}/repository/c
 | Go sum | `https://mirror.${domain}/repository/go-sum/` |
 | NuGet | `https://mirror.${domain}/repository/nuget/index.json` |
 | Alpine | `https://mirror.${domain}/repository/alpine/…` |
-| Debian main (+ updates/backports) | `https://mirror.${domain}/repository/debian/` |
-| Debian security | `https://mirror.${domain}/repository/debian-security/` |
-| Ubuntu (main + updates + security) | `https://mirror.${domain}/repository/ubuntu/` |
 | Docker | `mirror.${domain}/repository/docker/…` |
 | Node dist | `https://mirror.${domain}/repository/nodejs/` |
