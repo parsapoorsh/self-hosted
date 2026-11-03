@@ -92,23 +92,32 @@ __JWKS_PEM__
         - introspection
         - userinfo
       allowed_origins_from_client_redirect_uris: true
-    # Mattermost GitLab SSO userinfo expects GitLab-shaped claims:
-    # username, email, name (not only preferred_username).
-    # username claim uses mattermost_username (admin → sysadmin; see definitions).
+    # Mattermost: scope contains "openid" so enterprise uses the OpenID provider,
+    # which sets Username from preferred_username (not GitLab "username").
+    # preferred_username + username both use mattermost_username (admin → sysadmin).
     claims_policies:
       mattermost:
+        # MM OpenID path may read preferred_username from the ID token.
+        id_token:
+          - 'preferred_username'
+          - 'username'
+          - 'email'
+          - 'name'
         custom_claims:
           username:
             name: 'username'
+            attribute: 'mattermost_username'
+          preferred_username:
+            name: 'preferred_username'
             attribute: 'mattermost_username'
     scopes:
       mattermost:
         claims:
           - 'username'
+          - 'preferred_username'
           - 'email'
           - 'email_verified'
           - 'name'
-          - 'preferred_username'
     clients:
       - client_id: '__OIDC_CLIENT_ID__'
         client_name: 'Nextcloud'
@@ -177,9 +186,10 @@ __JWKS_PEM__
           - 'https://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'http://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'https://mattermost.localhost/login/gitlab/complete'
+        # No "profile" — that would emit Authelia preferred_username=admin and
+        # override our sysadmin mapping. email + mattermost cover MM needs.
         scopes:
           - openid
-          - profile
           - email
           - mattermost
         response_types:
