@@ -3,7 +3,7 @@
 
 # TEMPORARY: HTTP -> HTTPS for public hosts (remove when plain HTTP is needed again).
 server {
-    listen __HTTP_PORT__ default_server;
+    listen 80 default_server;
     server_name __DOMAIN__ www.__DOMAIN__ library.__DOMAIN__;
 
     return 302 https://$host__HTTPS_PORT_SUFFIX__$request_uri;
