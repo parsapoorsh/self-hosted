@@ -42,6 +42,10 @@ entries:
       client_type: confidential
       client_id: nextcloud
       client_secret: !Env OIDC_CLIENT_SECRET
+      # 2026.x defaults grant_types to []; authorization_code is required.
+      grant_types:
+        - authorization_code
+        - refresh_token
       authorization_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-authorization-implicit-consent]
@@ -105,6 +109,9 @@ entries:
       client_type: confidential
       client_id: mirror
       client_secret: !Env MIRROR_OIDC_CLIENT_SECRET
+      grant_types:
+        - authorization_code
+        - refresh_token
       authorization_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-authorization-implicit-consent]
@@ -159,6 +166,9 @@ entries:
       client_type: confidential
       client_id: mattermost
       client_secret: !Env MATTERMOST_OIDC_CLIENT_SECRET
+      grant_types:
+        - authorization_code
+        - refresh_token
       authorization_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-authorization-implicit-consent]

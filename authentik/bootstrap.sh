@@ -138,10 +138,15 @@ print("ok" if need.issubset(ids) else f"missing={need-ids}")
 done
 
 # Ensure RS256 signing keys (Nextcloud/Nexspence reject HS256) + GitLab username claim.
-echo "authentik-bootstrap: ensuring RS256 signing keys"
-"${COMPOSE[@]}" exec -T authentik ak shell -c '
+echo "authentik-bootstrap: ensuring RS256 signing keys + grant types"
+"${COMPOSE[@]}" exec -T \
+  -e NC_SECRET="${OIDC_CLIENT_SECRET}" \
+  -e MIRROR_SECRET="${MIRROR_OIDC_CLIENT_SECRET}" \
+  -e MM_SECRET="${MATTERMOST_OIDC_CLIENT_SECRET}" \
+  authentik ak shell -c '
+import os
 from authentik.crypto.models import CertificateKeyPair
-from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping, GrantTypes
 
 cert = CertificateKeyPair.objects.filter(name__icontains="Self-signed").first()
 if cert is None:
@@ -163,12 +168,24 @@ std = list(ScopeMapping.objects.filter(managed__in=[
     "goauthentik.io/providers/oauth2/scope-email",
     "goauthentik.io/providers/oauth2/scope-profile",
 ]))
+# 2026.x stores grant_types=[]; empty list rejects authorization_code as malformed.
+grants = [GrantTypes.AUTHORIZATION_CODE, GrantTypes.REFRESH_TOKEN]
+secrets = {
+    "nextcloud": os.environ.get("NC_SECRET") or "",
+    "mirror": os.environ.get("MIRROR_SECRET") or "",
+    "mattermost": os.environ.get("MM_SECRET") or "",
+}
 for p in OAuth2Provider.objects.all():
     p.signing_key = cert
     p.include_claims_in_id_token = True
+    p.grant_types = grants
+    if secrets.get(p.client_id):
+        p.client_secret = secrets[p.client_id]
     p.save()
     p.property_mappings.set(std + [sm])
-print("signing_key=%s providers=%s" % (cert.name, OAuth2Provider.objects.count()))
+print("signing_key=%s providers=%s grants=authorization_code+refresh_token" % (
+    cert.name, OAuth2Provider.objects.count(),
+))
 '
 
 # Nexspence maps Authentik group "admins" -> nx-admin. Ensure it exists.
