@@ -25,6 +25,13 @@ HTTP_PORT="${HTTP_PORT:-80}"
 HTTPS_PORT="${HTTPS_PORT:-443}"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?}"
+
+# compose.yml requires CALLS_ICE_HOST_OVERRIDE for interpolation (same as compose.sh).
+if [[ -z "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then
+  CALLS_ICE_HOST_OVERRIDE="$(ip -4 route get 1.1.1.1 2>/dev/null \
+    | awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')"
+  export CALLS_ICE_HOST_OVERRIDE
+fi
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 # Edge base (published host ports). Empty path; Host header selects the vhost.
