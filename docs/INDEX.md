@@ -38,5 +38,3 @@ Authelia SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 ## Quick links
 
 - PyPI simple: [https://mirror.${domain}/repository/pypi/simple/](https://mirror.${domain}/repository/pypi/simple/)
-
-Local testing uses the same paths under `*.localhost` (for example `https://mirror.localhost/`).
