@@ -7,6 +7,12 @@ log:
   level: info
   format: text
 
+# Mattermost reserves the username "admin" (CleanUsername strips it). Map to sysadmin.
+definitions:
+  user_attributes:
+    mattermost_username:
+      expression: 'username == "admin" ? "sysadmin" : username'
+
 server:
   address: 'tcp://0.0.0.0:9091/'
 
@@ -88,12 +94,13 @@ __JWKS_PEM__
       allowed_origins_from_client_redirect_uris: true
     # Mattermost GitLab SSO userinfo expects GitLab-shaped claims:
     # username, email, name (not only preferred_username).
+    # username claim uses mattermost_username (admin → sysadmin; see definitions).
     claims_policies:
       mattermost:
         custom_claims:
           username:
             name: 'username'
-            attribute: 'username'
+            attribute: 'mattermost_username'
     scopes:
       mattermost:
         claims:
