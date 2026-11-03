@@ -26,6 +26,8 @@ DOCKER_PROXY_INDEX = {
     "indexType": "REGISTRY",
     "cacheForeignLayers": False,
 }
+# Host file cert/alpine.key, mounted at /init/alpine.key by compose.
+ALPINE_KEY_PATH = os.environ.get("NEXUS_ALPINE_SIGNING_KEY", "/init/alpine.key")
 
 
 def log(msg: str) -> None:
@@ -37,6 +39,15 @@ def env(name: str, default: str | None = None) -> str:
     if val is None or val == "":
         raise SystemExit(f"missing env {name}")
     return val
+
+
+def load_alpine_key() -> str:
+    """RSA PKCS#8 PEM from compose-generated cert/alpine.key."""
+    with open(ALPINE_KEY_PATH, encoding="utf-8") as fh:
+        key = fh.read().strip()
+    if "PRIVATE KEY" not in key:
+        raise RuntimeError(f"invalid alpine signing key: {ALPINE_KEY_PATH}")
+    return key + "\n"
 
 
 class Nexus:
@@ -244,6 +255,8 @@ def proxy_payload(entry: dict[str, Any]) -> dict[str, Any]:
         }
     if fmt == "cargo":
         body["cargo"] = {"requireAuthentication": False}
+    if fmt == "alpine":
+        body["alpineSigning"] = {"keypair": entry["alpineKey"]}
     return body
 
 
@@ -272,6 +285,8 @@ def group_payload(
         body["raw"] = {"contentDisposition": "INLINE"}
     if fmt == "cargo":
         body["cargo"] = {"requireAuthentication": False}
+    if fmt == "alpine":
+        body["alpineSigning"] = {"keypair": entry["alpineKey"]}
     return body
 
 
@@ -528,6 +543,13 @@ def main() -> int:
     ensure_eula(nx)
     ensure_anonymous(nx)
     ensure_blobstores(nx, blobs)
+
+    alpine_key = None
+    if any(e["format"] == "alpine" for e in (*proxies, *groups)):
+        alpine_key = load_alpine_key()
+        for entry in (*proxies, *groups):
+            if entry["format"] == "alpine":
+                entry["alpineKey"] = alpine_key
 
     hosted_failed = ensure_hosted(nx, hosted)
     proxy_failed = ensure_proxies(nx, proxies)

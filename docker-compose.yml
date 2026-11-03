@@ -178,6 +178,8 @@ services:
       - ./nexus/bootstrap.sh:/init/bootstrap.sh:ro
       - ./nexus/ensure_repos.py:/init/ensure_repos.py:ro
       - ./nexus/catalog.json:/init/catalog.json:ro
+      # Created by scripts/compose.sh (openssl); used for Alpine repo signing
+      - ./cert/alpine.key:/init/alpine.key:ro
     networks:
       - self-hosted
     # Ceiling above INSTALL4J heap+direct in nexus/env (~1.3g budget).

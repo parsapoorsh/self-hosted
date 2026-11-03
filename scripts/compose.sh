@@ -8,6 +8,20 @@ cd "${ROOT}"
 
 ./scripts/sync-secrets.sh
 
+# Nexus Alpine repos need a stable RSA key (PEM). Create once on the host.
+ensure_nexus_alpine_key() {
+  local key="${ROOT}/cert/alpine.key"
+  if [[ -f "${key}" ]]; then
+    return 0
+  fi
+  mkdir -p "${ROOT}/cert"
+  echo "compose: creating ${key}"
+  openssl genrsa 2048 2>/dev/null \
+    | openssl pkcs8 -topk8 -nocrypt -out "${key}"
+  chmod 600 "${key}"
+}
+ensure_nexus_alpine_key
+
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 cmd=""
