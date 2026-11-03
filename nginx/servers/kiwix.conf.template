@@ -7,7 +7,7 @@ server {
     include /etc/nginx/self-hosted/snippets/backend-realip.conf;
 
     location / {
-        set $kiwix_upstream http://kiwix-serve:9393;
+        set $kiwix_upstream http://kiwix:9393;
         proxy_pass $kiwix_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
