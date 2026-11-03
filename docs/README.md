@@ -7,7 +7,7 @@ page_title: README * ${domain}
 
 Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps.
 
-Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects to HTTPS.
+Public edge is **HTTPS**. HTTP on `*.${domain}` redirects to HTTPS.
 
 ## Services
 
@@ -27,7 +27,7 @@ Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous 
 ## Requirements
 
 - Docker with Compose v2  
-- Ports 80 / 443 free (or `HTTP_PORT` / `HTTPS_PORT`)  
+- Ports 80 / 443 free  
 - OpenSSL (cert scripts)  
 - Python venv for landing pages: `venv/` + `docs/compiler/requirements.txt`  
 
@@ -35,7 +35,7 @@ Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous 
 
 ```bash
 cp .env.example .env
-# Set DOMAIN=${domain}, APP_SCHEME=https, POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD
+# Set DOMAIN=${domain}, ORG_NAME, POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD
 
 ./scripts/self-signed.sh          # or real certs in cert/${domain}/
 ./scripts/build-static.sh         # docs -> static/ (compose also builds if missing)
@@ -68,8 +68,7 @@ Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repo
 | Variable | Purpose |
 |----------|---------|
 | `DOMAIN` | Apex domain (`${domain}`) |
-| `APP_SCHEME` | **`https` in production** - OIDC redirect URLs (Authelia rejects non-localhost `http` callbacks) |
-| `NEXSPENCE_OIDC_COOKIE_SECURE` | `true` with HTTPS (default in compose) |
+| `ORG_NAME` | Mattermost organization / default team name |
 | `POSTGRES_PASSWORD` | Postgres superuser |
 | `KEYCLOAK_ADMIN` / `_PASSWORD` | Shared app admin |
 

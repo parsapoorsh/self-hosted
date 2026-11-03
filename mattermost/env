@@ -23,8 +23,7 @@ MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION=false
 MM_EMAILSETTINGS_ENABLESMTPAUTH=false
 MM_TEAMSETTINGS_ENABLEOPENSERVER=true
 MM_TEAMSETTINGS_ENABLEUSERCREATION=true
-# Default org / site branding (also seeded as team "okbrb" by mattermost/bootstrap.sh).
-MM_TEAMSETTINGS_SITENAME=okbrb
+# SiteName / default team come from ORG_NAME in root .env (compose + bootstrap).
 # Only Town Square as default; empty list would also create Off-Topic.
 MM_TEAMSETTINGS_EXPERIMENTALDEFAULTCHANNELS=town-square
 # Skip first-admin wizard ("organization name", "What tools do you use?", invites).

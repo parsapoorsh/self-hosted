@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent Mattermost post-start setup (host-side; image has no shell):
 #   - mark first-admin onboarding complete (skip org / tools wizard)
-#   - set OrganizationName + ensure public team "okbrb"
+#   - set OrganizationName + ensure public team from ORG_NAME (.env)
 #   - remove default Off-Topic channel (only Town Square)
 #   - add existing non-bot users to that team
 #
@@ -11,12 +11,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
-ORG_NAME="${MATTERMOST_ORG_NAME:-okbrb}"
-COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
-
 log() {
   echo "mattermost-bootstrap: $*" >&2
 }
+
+if [[ ! -f .env || ! -f .env.secrets ]]; then
+  log "missing .env or .env.secrets"
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+set -a
+source "${ROOT}/.env"
+set +a
+
+ORG_NAME="${ORG_NAME:-}"
+if [[ -z "${ORG_NAME}" ]]; then
+  log "ORG_NAME required in .env"
+  exit 1
+fi
+COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 mmctl() {
   "${COMPOSE[@]}" exec -T mattermost \
@@ -120,10 +134,6 @@ for u in json.loads(raw[start:]):
 '
   )
 }
-if [[ ! -f .env || ! -f .env.secrets ]]; then
-  log "missing .env or .env.secrets"
-  exit 1
-fi
 
 wait_mattermost
 ensure_systems

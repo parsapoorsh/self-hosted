@@ -33,9 +33,8 @@ services:
     env_file:
       - ./anubis/env
     environment:
-      # false so challenges work on plain HTTP (Secure/Partitioned cookies are HTTPS-only).
-      COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-false}"
-      COOKIE_PARTITIONED: "${ANUBIS_COOKIE_PARTITIONED:-false}"
+      COOKIE_SECURE: "true"
+      COOKIE_PARTITIONED: "true"
     volumes:
       - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
     networks:
@@ -111,13 +110,11 @@ services:
       NEXTCLOUD_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       # Both names; do not set OVERWRITEHOST (breaks cloud.localhost).
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com} cloud.localhost
-      OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-${APP_SCHEME:-http}://cloud.${DOMAIN:-example.com}}
-      # Match public edge scheme. Hardcoding http breaks HTTPS login cookies/redirects.
-      OVERWRITEPROTOCOL: ${APP_SCHEME:-http}
+      OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-https://cloud.${DOMAIN:-example.com}}
+      OVERWRITEPROTOCOL: https
       # Trust docker/edge so X-Forwarded-Proto from nginx is honored.
       TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-10.0.0.0/8 172.16.0.0/12 192.168.0.0/16}
       DOMAIN: ${DOMAIN:-example.com}
-      APP_SCHEME: ${APP_SCHEME:-http}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       OIDC_PROVIDER_ID: ${OIDC_PROVIDER_ID:-Authelia}
@@ -143,7 +140,6 @@ services:
       - ./authelia/env
     environment:
       DOMAIN: ${DOMAIN:-example.com}
-      APP_SCHEME: ${APP_SCHEME:-http}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
@@ -186,7 +182,7 @@ services:
       - ./nexspence/env
     environment:
       NEXSPENCE_DATABASE_DSN: postgres://nexspence:${NEXSPENCE_DB_PASSWORD}@postgres:5432/nexspence?sslmode=disable
-      NEXSPENCE_HTTP_BASE_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}
+      NEXSPENCE_HTTP_BASE_URL: https://mirror.${DOMAIN:-example.com}
       NEXSPENCE_AUTH_JWT_SECRET: ${NEXSPENCE_AUTH_JWT_SECRET}
       # Same human admin as Authelia (bootstrap + basic auth for package/API clients)
       NEXSPENCE_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
@@ -199,9 +195,9 @@ services:
       NEXSPENCE_OIDC_ISSUER: https://auth.${DOMAIN:-example.com}
       NEXSPENCE_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
       NEXSPENCE_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
-      NEXSPENCE_OIDC_REDIRECT_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}/api/v1/auth/oidc/callback
-      NEXSPENCE_OIDC_FRONTEND_BASE_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}
-      NEXSPENCE_OIDC_COOKIE_SECURE: "${NEXSPENCE_OIDC_COOKIE_SECURE:-true}"
+      NEXSPENCE_OIDC_REDIRECT_URL: https://mirror.${DOMAIN:-example.com}/api/v1/auth/oidc/callback
+      NEXSPENCE_OIDC_FRONTEND_BASE_URL: https://mirror.${DOMAIN:-example.com}
+      NEXSPENCE_OIDC_COOKIE_SECURE: "true"
       NEXSPENCE_OIDC_COOKIE_KEY: ${NEXSPENCE_OIDC_COOKIE_KEY}
       NEXSPENCE_OIDC_ADMIN_GROUP: admins
       NEXSPENCE_OIDC_GROUPS_CLAIM: groups
@@ -244,8 +240,8 @@ services:
       - ./mattermost/env
     environment:
       DOMAIN: ${DOMAIN:-example.com}
-      APP_SCHEME: ${APP_SCHEME:-https}
-      MM_SERVICESETTINGS_SITEURL: ${APP_SCHEME:-https}://mattermost.${DOMAIN:-example.com}
+      MM_SERVICESETTINGS_SITEURL: https://mattermost.${DOMAIN:-example.com}
+      MM_TEAMSETTINGS_SITENAME: ${ORG_NAME}
       MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${MATTERMOST_DB_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
       MM_GITLABSETTINGS_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
       MM_GITLABSETTINGS_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
