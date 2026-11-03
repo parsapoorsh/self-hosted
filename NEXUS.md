@@ -226,6 +226,22 @@ composer install
 
 ---
 
+## Alpine (apk)
+
+Group: `alpine` → `${NEXUS}/repository/alpine/`
+
+```bash
+# example: v3.20 main + community
+NEXUS_APK="${NEXUS}/repository/alpine"
+echo "${NEXUS_APK}/v3.20/main" > /etc/apk/repositories
+echo "${NEXUS_APK}/v3.20/community" >> /etc/apk/repositories
+
+apk update
+apk add curl
+```
+
+---
+
 ## Hugging Face
 
 Proxy repo name in catalog: `huggingface-devneeds` / `huggingface-upstream` (no single group name). Point the hub client at a proxy you use, for example:
@@ -273,6 +289,7 @@ curl -sS -u "${NEXUS_USER}:${NEXUS_PASS}" \
 | Go checksums | `go-sum` | `/repository/go-sum/` |
 | NuGet | `nuget` | `/repository/nuget/index.json` |
 | Composer | `composer` | `/repository/composer/` |
+| Alpine apk | `alpine` | `/repository/alpine/<ver>/<branch>` |
 | Docker Hub | `docker` | `/repository/docker/…` |
 | GHCR | `ghcr` | `/repository/ghcr/…` |
 | K8s registry | `k8s` | `/repository/k8s/…` |

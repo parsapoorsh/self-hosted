@@ -1,5 +1,6 @@
 {
   "blobStores": [
+    "alpine",
     "cargo",
     "composer",
     "docker",
@@ -12,6 +13,14 @@
     "pypi"
   ],
   "proxies": {
+    "alpine": {
+      "alpine-arvancloud": "https://mirror.arvancloud.ir/alpine",
+      "alpine-iut": "http://repo.iut.ac.ir/repo/alpine/",
+      "alpine-kargadan": "https://mirror.kargadan.ir/repository/alpine-proxy/",
+      "alpine-liara": "https://linux-mirror.liara.ir/repository/alpine/",
+      "alpine-runflare": "http://mirror-linux.runflare.com/alpine",
+      "alpine-upstream": "https://dl-cdn.alpinelinux.org/alpine/"
+    },
     "cargo": {
       "cargo-devneeds": "https://cargo.devneeds.ir/repository/cargo/",
       "cargo-iranserver": "https://cargo.iranserver.com/repository/cargo/",
@@ -121,6 +130,16 @@
     ]
   },
   "groups": {
+    "alpine": {
+      "alpine": [
+        "alpine-arvancloud",
+        "alpine-kargadan",
+        "alpine-liara",
+        "alpine-runflare",
+        "alpine-iut",
+        "alpine-upstream"
+      ]
+    },
     "cargo": {
       "cargo": [
         "cargo-devneeds",
