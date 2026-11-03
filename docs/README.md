@@ -5,7 +5,7 @@ page_title: README · ${domain}
 
 # self-hosted · ${domain}
 
-Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Nexus Repository**, **Kiwix**, and a static landing page. One human admin is shared across the apps.
+Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexus Repository**, **Kiwix**, and a static landing page. One human admin is shared across the apps.
 
 Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects to HTTPS.
 
@@ -16,6 +16,7 @@ Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects t
 | `https://${domain}` / `www` | Landing (`static/`, built from `docs/`) |
 | `https://auth.${domain}` | Authelia (OIDC IdP) |
 | `https://cloud.${domain}` | Nextcloud (OIDC via Authelia) |
+| `https://mattermost.${domain}` | Mattermost (OIDC via Authelia) |
 | `https://nexus.${domain}` | Nexus UI (OIDC) + package APIs |
 | `https://kiwix.${domain}` | Kiwix (optional Anubis) |
 
@@ -56,7 +57,7 @@ From `.env`:
 - **Username:** `KEYCLOAK_ADMIN` (default `admin`)  
 - **Password:** `KEYCLOAK_ADMIN_PASSWORD`  
 
-Works for Authelia, Nextcloud, and Nexus UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authelia.)
+Works for Authelia, Nextcloud, Mattermost (SSO), and Nexus UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authelia.)
 
 Nexus bootstrap (every start): EULA, anonymous read, Rut Auth for SSO, `nexus/catalog.json` repos.
 
@@ -75,6 +76,8 @@ Nexus bootstrap (every start): EULA, anonymous read, Rut Auth for SSO, `nexus/ca
 ### Derived secrets
 
 `./scripts/sync-secrets.sh` → gitignored `.env.secrets` (DB roles, Authelia HMAC, OIDC clients, oauth2 cookie).
+
+Authelia session/OIDC state is stored in Postgres (`authelia` database), same as Nextcloud and Mattermost. The `auth.localhost` cookie domain is intentional so local TLS (`*.localhost`) and `auth.${domain}` share one IdP.
 
 ### Landing docs
 
@@ -125,11 +128,12 @@ Full wipe: `./scripts/reset.sh`
 
 ## How SSO is wired
 
-1. **Authelia** — file users, OIDC clients `nextcloud` + `nexus`, portal on `auth.${domain}`  
+1. **Authelia** — file users, OIDC clients `nextcloud` + `nexus` + `mattermost`, portal on `auth.${domain}`  
 2. **Nextcloud** — `user_oidc` against Authelia  
-3. **Nexus UI** — nginx `auth_request` → oauth2-proxy → Authelia → `X-Remote-User` / Rut Auth  
+3. **Mattermost** — GitLab SSO settings pointed at Authelia OIDC (`/signup/gitlab/complete`)  
+4. **Nexus UI** — nginx `auth_request` → oauth2-proxy → Authelia → `X-Remote-User` / Rut Auth  
 
-Redirect URI must be `https://nexus.${domain}/oauth2/callback` when the site is public HTTPS.
+Redirect URI must be `https://nexus.${domain}/oauth2/callback` when the site is public HTTPS. Mattermost uses `https://mattermost.${domain}/signup/gitlab/complete`.
 
 ## Package mirrors
 
@@ -144,7 +148,7 @@ docker-compose.yml
 .env / .env.example
 docs/                        # markdown sources (${domain} placeholders)
 static/                      # built HTML (gitignored)
-authelia/ nextcloud/ nexus/
+authelia/ nextcloud/ mattermost/ nexus/
 nginx/ postgres/ redis/
 kiwix/ anubis/
 scripts/                     # compose, build-static, certs, smoke
