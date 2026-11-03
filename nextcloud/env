@@ -1,8 +1,8 @@
 # Nextcloud constants (admin + DB password from root .env / .env.secrets).
+# OVERWRITEPROTOCOL / TRUSTED_PROXIES come from compose (APP_SCHEME + docker nets).
 POSTGRES_HOST=postgres
 POSTGRES_DB=nextcloud
 POSTGRES_USER=nextcloud
 REDIS_HOST=redis
-OVERWRITEPROTOCOL=http
 OIDC_PROVIDER_ID=Authelia
 OIDC_CLIENT_ID=nextcloud

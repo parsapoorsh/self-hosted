@@ -112,6 +112,10 @@ services:
       # Both names; do not set OVERWRITEHOST (breaks cloud.localhost).
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com} cloud.localhost
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-${APP_SCHEME:-http}://cloud.${DOMAIN:-example.com}}
+      # Match public edge scheme. Hardcoding http breaks HTTPS login cookies/redirects.
+      OVERWRITEPROTOCOL: ${APP_SCHEME:-http}
+      # Trust docker/edge so X-Forwarded-Proto from nginx is honored.
+      TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-10.0.0.0/8 172.16.0.0/12 192.168.0.0/16}
       DOMAIN: ${DOMAIN:-example.com}
       APP_SCHEME: ${APP_SCHEME:-http}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
@@ -233,9 +237,9 @@ services:
       retries: 18
       start_period: 40s
 
-  # Mattermost — Authelia via GitLab SSO settings
+  # Mattermost — Authelia via GitLab SSO (enterprise image; SSO needs license features)
   mattermost:
-    image: mattermost/mattermost-team-edition:12.0.1
+    image: mattermost/mattermost-enterprise-edition:12.0.1
     env_file:
       - ./mattermost/env
     environment:
