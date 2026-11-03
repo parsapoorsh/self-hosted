@@ -32,6 +32,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="start in dark mode (theme checkbox checked; still toggleable)",
     )
+    parser.add_argument(
+        "--domain",
+        default=None,
+        help="apex domain for ${domain} placeholders (default: $DOMAIN or .env)",
+    )
     args = parser.parse_args(argv)
 
     bad = False
@@ -62,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
                 input_path,
                 output_path,
                 dark=args.dark,
+                domain=args.domain,
             )
         except ValueError as exc:
             print(f"error: {input_path}: {exc}", file=sys.stderr)

@@ -1,38 +1,34 @@
 ---
-title: APT Mirror
+title: APT
+page_title: APT · ${domain}
 ---
 
-# APT via Nexus (merged group)
+# APT on ${domain}
 
-One base URL for Ubuntu, Debian, and Kali. The **suite** on the `deb` line chooses the release (`jammy`, `bookworm`, `kali-rolling`, …). Indexes are merged from several Nexus apt proxies, re-signed with a local group key, and served by the **apt-group** sidecar.
+One base URL for **Ubuntu**, **Debian**, and **Kali**. The suite on the `deb` line picks the release (`jammy`, `bookworm`, `kali-rolling`, …). Indexes are merged from several Nexus apt proxies, re-signed with a local group key, and served by the **apt-group** sidecar.
 
-Individual proxies still exist under `/repository/<name>/` if you need a single mirror. Most clients should use the group.
+Most clients should use the group. Single-mirror Nexus proxies remain available if you need one upstream only.
 
 ---
 
 ## Base URL
 
 ```bash
-# Domain from .env
-export NEXUS="https://nexus.$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
+export NEXUS="https://nexus.${domain}"
 
-# Or localhost
-export NEXUS="https://nexus.localhost"
+# Local testing only:
+# export NEXUS="https://nexus.localhost"
 ```
 
-Group root:
+Group root: `${NEXUS}/repository/apt/`
 
-```text
-${NEXUS}/repository/apt/
-```
-
-Anonymous pull (no Authelia). Self-signed TLS: run `./scripts/trust-localhost-ca.sh` or trust `cert/<DOMAIN>/`.
+Anonymous pull (no Authelia). HTTP redirects to HTTPS at the edge. Trust `cert/${domain}/` (or run `./scripts/trust-localhost-ca.sh` for localhost).
 
 ---
 
 ## Trust the group key (once)
 
-Indexes are **not** signed with Ubuntu/Debian/Kali keys. Trust this key instead:
+Indexes are signed with the **group** key, not Ubuntu/Debian/Kali keys.
 
 ```bash
 sudo mkdir -p /etc/apt/keyrings
@@ -40,8 +36,7 @@ curl -fsS "${NEXUS}/repository/apt/key.asc" \
   | sudo tee /etc/apt/keyrings/nexus-apt-group.asc >/dev/null
 ```
 
-Public key URL: `${NEXUS}/repository/apt/key.asc`  
-(also `/repository/apt/pubkey.gpg`)
+Key URL: `https://nexus.${domain}/repository/apt/key.asc`
 
 ---
 
@@ -49,7 +44,7 @@ Public key URL: `${NEXUS}/repository/apt/key.asc`
 
 Use `signed-by=` and the **same path** for every suite.
 
-### Ubuntu (example: jammy)
+### Ubuntu (jammy)
 
 ```bash
 cat <<EOF | sudo tee /etc/apt/sources.list.d/nexus-ubuntu.list
@@ -60,11 +55,9 @@ deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] ${NEXUS}/repository/apt ja
 EOF
 ```
 
-Noble: replace `jammy` with `noble`.
+For noble, replace `jammy` with `noble`. Components: `main` `restricted` `universe` `multiverse`.
 
-Ubuntu components: `main` `restricted` `universe` `multiverse`.
-
-### Debian (example: bookworm)
+### Debian (bookworm)
 
 ```bash
 cat <<EOF | sudo tee /etc/apt/sources.list.d/nexus-debian.list
@@ -75,9 +68,7 @@ deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] ${NEXUS}/repository/apt bo
 EOF
 ```
 
-Forky / trixie / sid: change the suite name the same way.
-
-Debian components: `main` `contrib` `non-free` `non-free-firmware`.
+Forky / trixie / sid: change the suite name the same way. Components: `main` `contrib` `non-free` `non-free-firmware`.
 
 ### Kali
 
@@ -96,106 +87,92 @@ sudo apt-get update
 sudo apt-get install curl
 ```
 
-Disable or remove old `sources.list` entries that point at `archive.ubuntu.com`, `deb.debian.org`, etc., so apt does not mix two archives for the same suite.
+Remove or disable old lines that point at `archive.ubuntu.com`, `deb.debian.org`, etc., so the same suite is not mixed from two archives.
 
 ---
 
 ## What you get
 
-| Behavior | Detail |
-|----------|--------|
-| Architectures | **amd64**, **i386** only |
-| Versions | **Union** across members — newest is preferred; older versions stay listed while a member still has them (pins / downgrades work) |
-| Suites | Allowlisted in `nexus/catalog.json` → `aptGroup.suites` |
-| Members | Family-scoped (ubuntu / debian / kali proxies only for matching suites), ordered, capped by `maxMembersPerSuite` |
-| Signing | Group OpenPGP key under `cert/apt-group/` (generated on first start) |
+| | |
+|--|--|
+| Architectures | **amd64**, **i386** |
+| Versions | **Union** across members — newest preferred; older builds stay listed while a member still has them |
+| Suites | Allowlist in `nexus/catalog.json` → `aptGroup.suites` |
+| Members | Family-scoped (ubuntu / debian / kali), ordered (**cdn.ir** then **Arvancloud** first), capped by `maxMembersPerSuite` |
+| Signing | Group OpenPGP key in `cert/apt-group/` (created on first start) |
 
-### Suites currently configured
+### Suites configured today
 
-Ubuntu: `jammy`, `jammy-updates`, `jammy-security`, `jammy-backports`, `noble`, `noble-updates`, `noble-security`, `noble-backports`
+- **Ubuntu:** jammy, noble (+ updates / security / backports)
+- **Debian:** bookworm, trixie, forky, sid (+ pockets where listed)
+- **Kali:** kali-rolling, kali-last-snapshot, kali-experimental
 
-Debian: `bookworm` (+ updates/security/backports), `trixie` (+ …), `forky` (+ …), `sid`
-
-Kali: `kali-rolling`, `kali-last-snapshot`, `kali-experimental`
-
-Add or remove names in `nexus/catalog.json` → `aptGroup.suites`, then restart `apt-group`.
+Edit `aptGroup.suites`, then restart `apt-group`.
 
 ---
 
-## First `apt-get update` can be slow
+## First update can be slow
 
-Cold suite merge pulls Packages indexes from a few mirrors (through Nexus), merges them, and signs. That can take on the order of **one to a few minutes** per suite the first time.
-
-Later updates hit the in-memory / disk cache (TTL ~30 minutes by default: `metadataTtlSeconds`).
+A cold suite merge downloads Packages indexes through Nexus, merges them, and signs. Expect on the order of **one to a few minutes** the first time. Later runs use cache (`metadataTtlSeconds`, default ~30 minutes).
 
 ---
 
 ## Smoke checks
 
 ```bash
-# service
 curl -fsS "${NEXUS}/repository/apt/"
 curl -fsS "${NEXUS}/repository/apt/key.asc" | head
-
-# metadata (replace jammy if needed)
 curl -fsS "${NEXUS}/repository/apt/dists/jammy/InRelease" | head -20
 ```
 
-Expect a PGP-signed message with `Origin: nexus-apt-group` and `Architectures: amd64 i386`.
+Expect a clearsigned message with `Origin: nexus-apt-group` and `Architectures: amd64 i386`.
 
 ---
 
 ## Single-mirror proxies (optional)
 
-Without the group, point at one Nexus apt proxy:
-
 ```bash
-# example only — prefer the group for normal use
+# Prefer the group for normal use
 deb ${NEXUS}/repository/ubuntu-cdnir jammy main universe
 deb ${NEXUS}/repository/debian-liara bookworm main
 deb ${NEXUS}/repository/kali-kargadan kali-rolling main contrib non-free non-free-firmware
 ```
 
-Those use **upstream** signatures (Ubuntu/Debian/Kali keys), not the group key. Proxy names are in `nexus/catalog.json` → `proxies.apt`.
+These use **upstream** signatures. Names live under `nexus/catalog.json` → `proxies.apt`.
 
 ---
 
-## Ops / layout
+## Ops
 
 | Piece | Role |
 |-------|------|
-| `apt-group` container | Merge, sign, serve `/repository/apt/` |
-| Nexus apt proxies | Cache upstream bytes (`blob` store `apt`) |
-| nginx | `^~ /repository/apt` → apt-group (ahead of generic Nexus `/repository/`) |
-| `nexus/catalog.json` → `aptGroup` | Suites, member order, `maxMembersPerSuite`, timeouts |
+| `apt-group` | Merge, sign, serve `/repository/apt/` |
+| Nexus apt proxies | Cache upstream debs (`apt` blob store) |
+| nginx | `^~ /repository/apt` → apt-group |
+| `aptGroup` in catalog | Suites, member order, timeouts |
 
 ```bash
-# rebuild / restart group only
 ./scripts/compose.sh up -d --build apt-group
+docker logs self-hosted-apt-group-1 --tail 80
 ```
 
 ---
 
 ## Troubleshooting
 
-| Symptom | What to try |
-|---------|-------------|
-| `NO_PUBKEY` / signature errors | Re-fetch `key.asc` into `/etc/apt/keyrings/` and keep `signed-by=` on every line |
-| `503` / empty suite | No member returned Packages for that suite yet; check Nexus apt proxies and `docker logs` on `apt-group` |
-| Unknown suite | Name must be in `aptGroup.suites` |
-| Very slow first update | Normal on cold cache; wait, or pre-warm with `curl` on `dists/<suite>/InRelease` |
-| Wrong arch (arm64, …) | Group only publishes amd64/i386 |
-| Mix Ubuntu + Debian on one host | Do not enable both suites unless you intend a mixed system |
-
-```bash
-docker logs self-hosted-apt-group-1 --tail 80
-docker compose --env-file .env --env-file .env.secrets ps apt-group nexus
-```
+| Symptom | Try |
+|---------|-----|
+| `NO_PUBKEY` | Re-install `key.asc` and keep `signed-by=` on every line |
+| `503` / empty suite | Check apt proxies and `apt-group` logs; cold members may be down |
+| Unknown suite | Add it to `aptGroup.suites` |
+| Slow first update | Normal on cold cache; pre-warm with curl on `InRelease` |
+| arm64 / other arch | Group only publishes amd64 and i386 |
+| OAuth / UI 403 | UI is separate; package paths stay anonymous HTTPS |
 
 ---
 
 ## Related
 
-- Package clients for other formats: `NEXUS.md`
-- Catalog and proxy list: `nexus/catalog.json`
-- Service code: `apt-group/`
+- Other ecosystems: [Nexus](nexus.html) · `docs/NEXUS.md`
+- Stack install: [README](readme.html) · `docs/README.md`
+- Catalog: `nexus/catalog.json` · code: `apt-group/`

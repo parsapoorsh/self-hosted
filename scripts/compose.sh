@@ -44,6 +44,24 @@ require_domain_cert() {
   exit 1
 }
 
+# Landing pages (nginx serves static/ for apex / www). Gitignored — build if missing.
+ensure_static() {
+  if [[ -f "${ROOT}/static/index.html" ]]; then
+    return 0
+  fi
+  echo "compose: static/ missing or incomplete (need static/index.html)"
+  if [[ ! -x "${ROOT}/scripts/build-static.sh" ]]; then
+    echo "compose: scripts/build-static.sh not executable" >&2
+    exit 1
+  fi
+  echo "compose: running ./scripts/build-static.sh ..."
+  "${ROOT}/scripts/build-static.sh"
+  if [[ ! -f "${ROOT}/static/index.html" ]]; then
+    echo "compose: static/index.html still missing after build-static" >&2
+    exit 1
+  fi
+}
+
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 cmd=""
@@ -61,9 +79,13 @@ for arg in "$@"; do
   esac
 done
 
-# Fail before docker starts so nginx does not crash-loop on missing DOMAIN cert.
+# Fail before docker starts so nginx does not crash-loop on missing DOMAIN cert
+# or an empty landing site.
 case "${cmd}" in
-  up|start|restart) require_domain_cert ;;
+  up|start|restart)
+    require_domain_cert
+    ensure_static
+    ;;
 esac
 
 "${COMPOSE[@]}" "$@"
