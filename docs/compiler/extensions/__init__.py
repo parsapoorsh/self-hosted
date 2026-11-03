@@ -9,6 +9,7 @@ from extensions.constants import QUOTE_COLOR_RE, STRIKE_RE
 from extensions.img_attr_syntax import ImgAttrSyntaxPreprocessor
 from extensions.md_block import MdBlockProcessor
 from extensions.postprocess import (
+    DjbCodeBlockPostprocessor,
     DjbInlineTagPostprocessor,
     DjbPreTrailingNewlinePostprocessor,
 )
@@ -57,6 +58,12 @@ class DjbExtension(markdown.Extension):
             DjbPreTrailingNewlinePostprocessor(md),
             "djb_pre_trim",
             4,
+        )
+        # After pre trim: wrap hilite/pre in copy-button shell.
+        md.postprocessors.register(
+            DjbCodeBlockPostprocessor(md),
+            "djb_code_block",
+            3,
         )
 
 

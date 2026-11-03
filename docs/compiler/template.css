@@ -221,6 +221,17 @@ md-center ul,md-center ol{
   padding-left:1.2em;
 }
 img{max-width:100%;height:auto}
+/* Shell around each fence: hug text width, host the copy chip. */
+.code-block{
+  position:relative;
+  display:block;
+  width:fit-content;
+  max-width:100%;
+  margin:0.6em 0;
+}
+.code-block .codehilite{
+  background:transparent;
+}
 pre{
   /* Block so consecutive fences stack; fit-content so width hugs the text. */
   display:block;
@@ -233,6 +244,11 @@ pre{
   margin:0.6em 0;
   white-space:pre;
 }
+.code-block pre{
+  /* Room for the copy chip; shell owns outer margin. */
+  margin:0;
+  padding-right:3.2em;
+}
 pre tt,pre code{
   display:inline;
   vertical-align:baseline;
@@ -242,6 +258,35 @@ pre tt,pre code{
   padding:0;
   border-radius:0;
   line-height:inherit;
+}
+/* Top-right copy chip on each fence (JS only for clipboard write). */
+.code-copy{
+  position:absolute;
+  top:0.35em;
+  right:0.35em;
+  z-index:1;
+  margin:0;
+  padding:0.12em 0.45em;
+  font-size:0.72em;
+  line-height:1.3;
+  font-family:inherit;
+  cursor:pointer;
+  user-select:none;
+  border:1px solid var(--border);
+  border-radius:3px;
+  background:var(--bg);
+  color:var(--fg);
+  opacity:0.72;
+}
+.code-block:hover .code-copy,
+.code-copy:focus-visible{
+  opacity:1;
+}
+.code-copy:hover{filter:brightness(0.97)}
+body:has(#theme-toggle:checked) .code-copy:hover{filter:brightness(1.15)}
+.code-copy:focus-visible{
+  outline:2px solid var(--link);
+  outline-offset:2px;
 }
 blockquote{margin-left:1em;border-left:3px solid var(--border);padding-left:0.8em}
 table{border-collapse:collapse;margin:0.8em 0}

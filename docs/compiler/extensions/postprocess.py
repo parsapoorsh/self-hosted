@@ -6,6 +6,12 @@ import re
 
 import markdown
 
+# Small chip over each fence; click handled by template.html script.
+COPY_BUTTON_HTML = (
+    '<button type="button" class="code-copy" title="Copy" '
+    'aria-label="Copy code">Copy</button>'
+)
+
 
 class DjbInlineTagPostprocessor(markdown.postprocessors.Postprocessor):
     """Map em/strong/code to DJB i/b/tt after fenced blocks are restored."""
@@ -42,3 +48,49 @@ class DjbPreTrailingNewlinePostprocessor(markdown.postprocessors.Postprocessor):
             return f"{open_tag}{body}{close_tag}"
 
         return self.PRE_RE.sub(fix, text)
+
+
+class DjbCodeBlockPostprocessor(markdown.postprocessors.Postprocessor):
+    """Wrap each fenced block in a shell with a top-right copy button.
+
+    CodeHilite emits ``<div class="codehilite"><pre>…</pre></div>``.
+    Any remaining bare ``<pre>`` (no hilite wrapper) gets the same shell.
+    """
+
+    CODEHILITE_RE = re.compile(
+        r'<div class="codehilite">.*?</div>',
+        re.DOTALL | re.IGNORECASE,
+    )
+    PRE_RE = re.compile(
+        r"<pre\b[^>]*>.*?</pre>",
+        re.DOTALL | re.IGNORECASE,
+    )
+
+    def run(self, text: str) -> str:
+        def wrap_hilite(match: re.Match[str]) -> str:
+            return (
+                f'<div class="code-block">{COPY_BUTTON_HTML}'
+                f"{match.group(0)}</div>"
+            )
+
+        text = self.CODEHILITE_RE.sub(wrap_hilite, text)
+
+        # Bare <pre> not already inside a code-block (hilite path covered above).
+        out: list[str] = []
+        last = 0
+        for match in self.PRE_RE.finditer(text):
+            start, end = match.start(), match.end()
+            out.append(text[last:start])
+            window = text[max(0, start - 200):start]
+            open_at = window.rfind('<div class="code-block">')
+            close_at = window.rfind("</div>")
+            if open_at > close_at:
+                out.append(match.group(0))
+            else:
+                out.append(
+                    f'<div class="code-block">{COPY_BUTTON_HTML}'
+                    f"{match.group(0)}</div>"
+                )
+            last = end
+        out.append(text[last:])
+        return "".join(out)

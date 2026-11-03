@@ -10,5 +10,42 @@
     <label for="theme-toggle" class="theme-btn" title="Toggle light / dark (accesskey d)"></label>
     {{ body_html }}
     <hr>
+    <script>
+    /* Copy button for fenced code blocks (colors are pre-rendered). */
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest && ev.target.closest(".code-copy");
+      if (!btn) return;
+      var block = btn.closest(".code-block");
+      var pre = block && block.querySelector("pre");
+      if (!pre) return;
+      var text = pre.innerText || pre.textContent || "";
+      var done = function () {
+        btn.textContent = "Copied";
+        window.setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () {
+          btn.textContent = "Failed";
+          window.setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+        });
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          done();
+        } catch (e) {
+          btn.textContent = "Failed";
+          window.setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+        }
+        document.body.removeChild(ta);
+      }
+    });
+    </script>
 </body>
 </html>
