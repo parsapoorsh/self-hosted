@@ -16,9 +16,10 @@ if [ -z "${CLIENT_SECRET}" ]; then
 fi
 
 # Public discovery for browser redirects (Authelia portal is HTTPS).
-# Internal wait uses service DNS.
+# Readiness uses /api/health: Authelia 4.39+ rejects bare OIDC discovery
+# without X-Forwarded-Proto=https (same as smoke-check / Mattermost notes).
 DISCOVERY="https://auth.${DOMAIN}/.well-known/openid-configuration"
-DISCOVERY_INTERNAL="http://authelia:9091/.well-known/openid-configuration"
+HEALTH_INTERNAL="http://authelia:9091/api/health"
 
 if ! ${OCC} status 2>/dev/null | grep -q 'installed: true'; then
   echo "oidc-hook: nextcloud not installed yet — skip"
@@ -29,10 +30,10 @@ ${OCC} config:system:set allow_local_remote_servers --type=boolean --value=true 
 
 # Both public names. Do not force overwritehost — Host header must win so
 # cloud.localhost stays on localhost (otherwise redirects to cloud.<DOMAIN>).
+# overwriteprotocol comes from OVERWRITEPROTOCOL env (APP_SCHEME via compose).
 ${OCC} config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null
 ${OCC} config:system:set trusted_domains 1 --value="cloud.localhost" >/dev/null
 ${OCC} config:system:delete overwritehost >/dev/null 2>&1 || true
-${OCC} config:system:delete overwriteprotocol >/dev/null 2>&1 || true
 ${OCC} config:system:set overwrite.cli.url \
   --value="${SCHEME}://cloud.${DOMAIN}" >/dev/null
 
@@ -42,14 +43,14 @@ if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   ${OCC} app:enable user_oidc || true
 fi
 
-echo "oidc-hook: waiting for Authelia ${DISCOVERY_INTERNAL}"
+echo "oidc-hook: waiting for Authelia ${HEALTH_INTERNAL}"
 i=1
 while [ "$i" -le 60 ]; do
-  if php -r "exit(@file_get_contents('${DISCOVERY_INTERNAL}') === false ? 1 : 0);"; then
+  if php -r "exit(@file_get_contents('${HEALTH_INTERNAL}') === false ? 1 : 0);"; then
     break
   fi
   if [ "$i" -eq 60 ]; then
-    echo "oidc-hook: Authelia discovery not reachable — skip (will retry next start)"
+    echo "oidc-hook: Authelia health not reachable — skip (will retry next start)"
     exit 0
   fi
   i=$((i + 1))
@@ -61,7 +62,7 @@ ${OCC} user_oidc:provider "${PROVIDER_ID}" \
   --clientid="${CLIENT_ID}" \
   --clientsecret="${CLIENT_SECRET}" \
   --discoveryuri="${DISCOVERY}" \
-  --scope="openid email profile" \
+  --scope="openid email profile groups" \
   --unique-uid=0 \
   --mapping-uid=preferred_username \
   --mapping-display-name=name \
