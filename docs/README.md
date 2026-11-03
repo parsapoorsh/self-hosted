@@ -5,7 +5,7 @@ page_title: README · ${domain}
 
 # self-hosted · ${domain}
 
-Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexus Repository**, **Kiwix**, and a static landing page. One human admin is shared across the apps.
+Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps.
 
 Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects to HTTPS.
 
@@ -17,12 +17,12 @@ Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects t
 | `https://auth.${domain}` | Authelia (OIDC IdP) |
 | `https://cloud.${domain}` | Nextcloud (OIDC via Authelia) |
 | `https://mattermost.${domain}` | Mattermost (OIDC via Authelia) |
-| `https://nexus.${domain}` | Nexus UI (OIDC) + package APIs |
+| `https://mirror.${domain}` | Nexspence UI (OIDC) + package APIs |
 | `https://kiwix.${domain}` | Kiwix (optional Anubis) |
 
-Local aliases: `https://nexus.localhost/`, etc.
+Local aliases: `https://mirror.localhost/`, etc.
 
-Package traffic on Nexus (`/repository/`, `/v2/`) stays on Nexus basic auth or anonymous access. The browser UI is gated by Authelia.
+Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous access. The browser UI uses native Authelia OIDC (“Sign in with Authelia”).
 
 ## Requirements
 
@@ -57,9 +57,9 @@ From `.env`:
 - **Username:** `KEYCLOAK_ADMIN` (default `admin`)  
 - **Password:** `KEYCLOAK_ADMIN_PASSWORD`  
 
-Works for Authelia, Nextcloud, Mattermost (SSO), and Nexus UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authelia.)
+Works for Authelia, Nextcloud, Mattermost (SSO), and Nexspence UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authelia.)
 
-Nexus bootstrap (every start): EULA, anonymous read, Rut Auth for SSO, `nexus/catalog.json` repos.
+Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repos (hosted / proxy / group).
 
 ## Configuration
 
@@ -69,15 +69,15 @@ Nexus bootstrap (every start): EULA, anonymous read, Rut Auth for SSO, `nexus/ca
 |----------|---------|
 | `DOMAIN` | Apex domain (`${domain}`) |
 | `APP_SCHEME` | **`https` in production** — OIDC redirect URLs (Authelia rejects non-localhost `http` callbacks) |
-| `NEXUS_OAUTH2_COOKIE_SECURE` | `true` with HTTPS (default in compose) |
+| `NEXSPENCE_OIDC_COOKIE_SECURE` | `true` with HTTPS (default in compose) |
 | `POSTGRES_PASSWORD` | Postgres superuser |
 | `KEYCLOAK_ADMIN` / `_PASSWORD` | Shared app admin |
 
 ### Derived secrets
 
-`./scripts/sync-secrets.sh` → gitignored `.env.secrets` (DB roles, Authelia HMAC, OIDC clients, oauth2 cookie).
+`./scripts/sync-secrets.sh` → gitignored `.env.secrets` (DB roles, Authelia HMAC, OIDC clients, Nexspence JWT/cookie).
 
-Authelia session/OIDC state is stored in Postgres (`authelia` database), same as Nextcloud and Mattermost. The `auth.localhost` cookie domain is intentional so local TLS (`*.localhost`) and `auth.${domain}` share one IdP.
+Authelia session/OIDC state is stored in Postgres (`authelia` database), same as Nextcloud, Mattermost, and Nexspence. The `auth.localhost` cookie domain is intentional so local TLS (`*.localhost`) and `auth.${domain}` share one IdP.
 
 ### Landing docs
 
@@ -111,7 +111,7 @@ Localhost tree:
 ```bash
 ./scripts/compose.sh ps
 ./scripts/compose.sh logs -f authelia
-./scripts/compose.sh restart nexus
+./scripts/compose.sh restart nexspence
 ./scripts/compose.sh down
 ```
 
@@ -128,18 +128,20 @@ Full wipe: `./scripts/reset.sh`
 
 ## How SSO is wired
 
-1. **Authelia** — file users, OIDC clients `nextcloud` + `nexus` + `mattermost`, portal on `auth.${domain}`  
+1. **Authelia** — file users, OIDC clients `nextcloud` + `mirror` + `mattermost`, portal on `auth.${domain}`  
 2. **Nextcloud** — `user_oidc` against Authelia  
 3. **Mattermost** — GitLab SSO settings pointed at Authelia OIDC (`/signup/gitlab/complete`)  
-4. **Nexus UI** — nginx `auth_request` → oauth2-proxy → Authelia → `X-Remote-User` / Rut Auth  
+4. **Nexspence UI** — native OIDC to Authelia (`/api/v1/auth/oidc/callback`); OIDC client id is `mirror`  
 
-Redirect URI must be `https://nexus.${domain}/oauth2/callback` when the site is public HTTPS. Mattermost uses `https://mattermost.${domain}/signup/gitlab/complete`.
+Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS. Mattermost uses `https://mattermost.${domain}/signup/gitlab/complete`.
 
 ## Package mirrors
 
-Client guide: **[Nexus](nexus.html)** — cargo, pip, docker, npm, go, …
+Client guide: **[Mirror](mirror.html)** — cargo, pip, docker, npm, go, … (hostname remains `mirror.${domain}`)
 
-Mirror priority in the catalog prefers **cdn.ir**, then **Arvancloud**, then other members.
+Mirror priority in the catalog prefers **cdn.ir**, then **Arvancloud**, then other members. Group repos merge member indexes.
+
+Composer is not offered by Nexspence (dropped from the catalog).
 
 ## Layout
 
@@ -148,7 +150,7 @@ docker-compose.yml
 .env / .env.example
 docs/                        # markdown sources (${domain} placeholders)
 static/                      # built HTML (gitignored)
-authelia/ nextcloud/ mattermost/ nexus/
+authelia/ nextcloud/ mattermost/ nexspence/
 nginx/ postgres/ redis/
 kiwix/ anubis/
 scripts/                     # compose, build-static, certs, smoke
@@ -159,5 +161,5 @@ cert/                        # TLS (gitignored)
 
 - Do not commit `.env` or `.env.secrets`.  
 - Changing `KEYCLOAK_ADMIN_PASSWORD` regenerates OIDC secrets on the next compose run.  
-- Nexus is a large Java app; see `nexus/env` for heap caps.  
+- Nexspence is a Go binary + shared Postgres (`nexspence` database); blobs in the `nexspence_blobs` volume.  
 - If Cloudflare sits in front, use **Full (strict)** SSL so HTTP→HTTPS at origin does not loop.  
