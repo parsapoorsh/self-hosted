@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Derive internal service secrets into gitignored .env.secrets.
 # Human login uses KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD only
-# (shared Authelia / Nextcloud / Mattermost / Nexspence admin; name kept for existing .env files).
+# (shared Authentik / Nextcloud / Mattermost / Nexspence admin; name kept for existing .env).
 # Usage: ./scripts/sync-secrets.sh
 #        ./scripts/compose.sh up -d   # runs this first
 set -euo pipefail
@@ -50,7 +50,7 @@ derive_pass() {
   derive_hex "$1" "$2" | cut -c1-32
 }
 
-# 64-char secret for Authelia session / storage / hmac.
+# 64-char secret for Authentik secret key / long tokens.
 derive_long() {
   derive_hex "$1" "$2"
 }
@@ -71,20 +71,18 @@ derive_cookie() {
 
 # DB role passwords track POSTGRES_PASSWORD (stable if admin password rotates).
 NEXTCLOUD_DB_PASSWORD="$(derive_pass "${PG_PASS}" "nextcloud-db")"
-# AUTH_DB_* name avoids Authelia treating AUTHELIA_* as config env overrides.
+# AUTH_DB_PASSWORD is the Authentik postgres role (label kept for existing volumes).
 AUTH_DB_PASSWORD="$(derive_pass "${PG_PASS}" "authelia-db")"
 MATTERMOST_DB_PASSWORD="$(derive_pass "${PG_PASS}" "mattermost-db")"
 NEXSPENCE_DB_PASSWORD="$(derive_pass "${PG_PASS}" "nexspence-db")"
 
-# Authelia crypto material tracks POSTGRES_PASSWORD (stable across admin password changes).
-# Names avoid AUTHELIA_* so compose does not inject them as Authelia config env overrides.
-SESSION_SECRET="$(derive_long "${PG_PASS}" "authelia-session")"
-STORAGE_ENCRYPTION_KEY="$(derive_long "${PG_PASS}" "authelia-storage")"
-OIDC_HMAC_SECRET="$(derive_long "${PG_PASS}" "authelia-oidc-hmac")"
+# Authentik secret key + API bootstrap token (stable across admin password changes).
+AUTHENTIK_SECRET_KEY="$(derive_long "${PG_PASS}" "authentik-secret-key")"
+AUTHENTIK_BOOTSTRAP_TOKEN="$(derive_long "${PG_PASS}" "authentik-bootstrap-token")"
 
 # OIDC / cookie material tracks the shared admin password.
 OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-nextcloud")"
-# Client id is "mirror" so Authelia OIDC client and public host (mirror.*) stay stable.
+# Client id is "mirror" so OIDC client and public host (mirror.*) stay stable.
 MIRROR_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-mirror")"
 MATTERMOST_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-mattermost")"
 NEXSPENCE_AUTH_JWT_SECRET="$(derive_long "${PG_PASS}" "nexspence-jwt")"
@@ -120,9 +118,8 @@ AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD}
 MATTERMOST_DB_PASSWORD=${MATTERMOST_DB_PASSWORD}
 NEXSPENCE_DB_PASSWORD=${NEXSPENCE_DB_PASSWORD}
 
-SESSION_SECRET=${SESSION_SECRET}
-STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
-OIDC_HMAC_SECRET=${OIDC_HMAC_SECRET}
+AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
+AUTHENTIK_BOOTSTRAP_TOKEN=${AUTHENTIK_BOOTSTRAP_TOKEN}
 
 OIDC_CLIENT_ID=nextcloud
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}

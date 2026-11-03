@@ -143,7 +143,7 @@ ensure_app_dbs() {
   fi
 
   if [[ -n "${AUTH_DB_PASSWORD:-}" ]]; then
-    ./scripts/pg-app-db.sh authelia authelia "${AUTH_DB_PASSWORD}"
+    ./scripts/pg-app-db.sh authentik authentik "${AUTH_DB_PASSWORD}"
   fi
   if [[ -n "${MATTERMOST_DB_PASSWORD:-}" ]]; then
     ./scripts/pg-app-db.sh mattermost mattermost "${MATTERMOST_DB_PASSWORD}"
@@ -155,7 +155,7 @@ ensure_app_dbs() {
 
 status=0
 if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
-  # Bring postgres up first so Authelia/Mattermost DB roles exist before they start.
+  # Bring postgres up first so Authentik/Mattermost DB roles exist before they start.
   "${COMPOSE[@]}" up -d postgres
   status=$?
   if [[ "${status}" -eq 0 ]]; then
@@ -164,6 +164,10 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
   if [[ "${status}" -eq 0 ]]; then
     "${COMPOSE[@]}" "$@"
     status=$?
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    echo "compose: authentik bootstrap (shared admin user)..."
+    ./authentik/bootstrap.sh || status=$?
   fi
   if [[ "${status}" -eq 0 ]]; then
     echo "compose: mattermost bootstrap (org/team defaults)..."

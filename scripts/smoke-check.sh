@@ -38,12 +38,14 @@ COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 EDGE_HTTPS="https://127.0.0.1:${HTTPS_PORT}"
 EDGE_HTTP="http://127.0.0.1:${HTTP_PORT}"
 
-# Browsers send Host with the non-default port; Authelia OIDC requires it when
-# authelia_url includes :HTTPS_PORT. Empty when HTTPS_PORT is 443.
+# Browsers send Host with the non-default port. Empty when HTTPS_PORT is 443.
 HTTPS_HOST_SUFFIX=""
 if [[ "${HTTPS_PORT}" != "443" ]]; then
   HTTPS_HOST_SUFFIX=":${HTTPS_PORT}"
 fi
+
+# Authentik per-app discovery (Nextcloud issuer).
+NC_DISCOVERY="/application/o/nextcloud/.well-known/openid-configuration"
 
 fail=0
 ok() { echo "smoke: OK  $*"; }
@@ -57,9 +59,9 @@ container_ip() {
   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${id}"
 }
 
-echo "smoke: waiting for healthy authelia + nexspence..."
+echo "smoke: waiting for healthy authentik + nexspence..."
 for i in $(seq 1 90); do
-  au="$("${COMPOSE[@]}" ps authelia --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
+  au="$("${COMPOSE[@]}" ps authentik --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
   nx="$("${COMPOSE[@]}" ps nexspence --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
   if [[ "${au}" == *healthy* && "${nx}" == *healthy* ]]; then
     break
@@ -81,20 +83,18 @@ for i in $(seq 1 60); do
 done
 
 # Wait until bootstraps have applied (API truths beat log lines).
-echo "smoke: waiting for authelia OIDC + nexspence catalog..."
+echo "smoke: waiting for authentik OIDC + nexspence catalog..."
 for i in $(seq 1 90); do
   ready=1
-  AU_IP="$(container_ip authelia || true)"
+  AU_IP="$(container_ip authentik || true)"
   NX_IP="$(container_ip nexspence || true)"
   if [[ -z "${AU_IP}" || -z "${NX_IP}" ]]; then
     ready=0
   else
-    # Authelia 4.39+ OIDC discovery needs X-Forwarded-Proto=https (portal is TLS-only)
-    # and Host must include non-default HTTPS_PORT when configured that way.
     code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
       -H "X-Forwarded-Proto: https" \
       -H "X-Forwarded-Host: auth.localhost${HTTPS_HOST_SUFFIX}" \
-      "http://${AU_IP}:9091/.well-known/openid-configuration" 2>/dev/null || echo 000)"
+      "http://${AU_IP}:9000${NC_DISCOVERY}" 2>/dev/null || echo 000)"
     if [[ "${code}" != "200" ]]; then
       ready=0
     fi
@@ -111,26 +111,26 @@ for i in $(seq 1 90); do
   sleep 5
 done
 
-AU_IP="$(container_ip authelia || true)"
+AU_IP="$(container_ip authentik || true)"
 if [[ -n "${AU_IP}" ]]; then
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
     -H "X-Forwarded-Proto: https" \
     -H "X-Forwarded-Host: auth.localhost${HTTPS_HOST_SUFFIX}" \
-    "http://${AU_IP}:9091/.well-known/openid-configuration" || echo 000)"
+    "http://${AU_IP}:9000${NC_DISCOVERY}" || echo 000)"
   if [[ "${code}" == "200" ]]; then
-    ok "authelia OIDC discovery"
+    ok "authentik Nextcloud OIDC discovery"
   else
-    bad "authelia OIDC discovery HTTP ${code}"
+    bad "authentik Nextcloud OIDC discovery HTTP ${code}"
   fi
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-    "http://${AU_IP}:9091/api/health" || echo 000)"
+    "http://${AU_IP}:9000/-/health/ready/" || echo 000)"
   if [[ "${code}" == "200" ]]; then
-    ok "authelia health"
+    ok "authentik health"
   else
-    bad "authelia health HTTP ${code}"
+    bad "authentik health HTTP ${code}"
   fi
 else
-  bad "authelia container IP"
+  bad "authentik container IP"
 fi
 
 NX_IP="$(container_ip nexspence || true)"
@@ -171,14 +171,14 @@ fi
 
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Host: auth.localhost${HTTPS_HOST_SUFFIX}" \
-  "${EDGE_HTTPS}/.well-known/openid-configuration" || echo 000)"
+  "${EDGE_HTTPS}${NC_DISCOVERY}" || echo 000)"
 if [[ "${code}" == "200" ]]; then
-  ok "edge auth.localhost discovery (:${HTTPS_PORT})"
+  ok "edge auth.localhost nextcloud discovery (:${HTTPS_PORT})"
 else
-  bad "edge auth.localhost discovery HTTP ${code} (:${HTTPS_PORT})"
+  bad "edge auth.localhost nextcloud discovery HTTP ${code} (:${HTTPS_PORT})"
 fi
 
-# UI is public to the edge; SSO is Nexspence native OIDC (Sign in with Authelia).
+# UI is public to the edge; SSO is Nexspence native OIDC.
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Host: mirror.localhost${HTTPS_HOST_SUFFIX}" "${EDGE_HTTPS}/" || echo 000)"
 if [[ "${code}" == "200" || "${code}" == "302" || "${code}" == "301" ]]; then
@@ -223,7 +223,7 @@ else
   bad "mattermost container IP"
 fi
 
-# Nextcloud: login page must expose Authelia as alternative OIDC login.
+# Nextcloud: login page must expose Authentik as alternative OIDC login.
 code="$(curl -sk -o /tmp/nc-login-smoke.html -w '%{http_code}' --max-time 15 \
   -H "Host: cloud.localhost${HTTPS_HOST_SUFFIX}" "${EDGE_HTTPS}/login" || echo 000)"
 if [[ "${code}" == "200" ]]; then
@@ -237,7 +237,7 @@ PY
   if [[ "${alts}" != "0" && "${alts}" != "" ]]; then
     ok "nextcloud OIDC alternative logins count=${alts}"
   else
-    bad "nextcloud OIDC alternative logins count=${alts} (Authelia button missing)"
+    bad "nextcloud OIDC alternative logins count=${alts} (Authentik button missing)"
   fi
 else
   bad "nextcloud login page HTTP ${code}"

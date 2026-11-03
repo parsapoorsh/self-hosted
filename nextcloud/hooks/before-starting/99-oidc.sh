@@ -1,5 +1,5 @@
 #!/bin/sh
-# Trusted domains + user_oidc against Authelia. Idempotent.
+# Trusted domains + user_oidc against Authentik. Idempotent.
 # Nextcloud image runs hooks with /bin/sh - keep POSIX (no bash arrays).
 set -eu
 
@@ -8,7 +8,7 @@ DOMAIN="${DOMAIN:-example.com}"
 HTTPS_PORT="${HTTPS_PORT:-443}"
 CLIENT_ID="${OIDC_CLIENT_ID:-nextcloud}"
 CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
-PROVIDER_ID="${OIDC_PROVIDER_ID:-Authelia}"
+PROVIDER_ID="${OIDC_PROVIDER_ID:-Authentik}"
 
 if [ -z "${CLIENT_SECRET}" ]; then
   echo "oidc-hook: OIDC_CLIENT_SECRET empty - skip"
@@ -21,11 +21,9 @@ if [ "${HTTPS_PORT}" != "443" ]; then
   HTTPS_PORT_SUFFIX=":${HTTPS_PORT}"
 fi
 
-# Public discovery for browser redirects (Authelia portal is HTTPS).
-# Readiness uses /api/health: Authelia 4.39+ rejects bare OIDC discovery
-# without X-Forwarded-Proto=https (same as smoke-check / Mattermost notes).
-DISCOVERY="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}/.well-known/openid-configuration"
-HEALTH_INTERNAL="http://authelia:9091/api/health"
+# Per-app Authentik issuer discovery (public HTTPS edge).
+DISCOVERY="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}/application/o/nextcloud/.well-known/openid-configuration"
+HEALTH_INTERNAL="http://authentik:9000/-/health/ready/"
 
 if ! ${OCC} status 2>/dev/null | grep -q 'installed: true'; then
   echo "oidc-hook: nextcloud not installed yet - skip"
@@ -74,14 +72,14 @@ if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   ${OCC} app:enable user_oidc || true
 fi
 
-echo "oidc-hook: waiting for Authelia ${HEALTH_INTERNAL}"
+echo "oidc-hook: waiting for Authentik ${HEALTH_INTERNAL}"
 i=1
 while [ "$i" -le 60 ]; do
   if php -r "exit(@file_get_contents('${HEALTH_INTERNAL}') === false ? 1 : 0);"; then
     break
   fi
   if [ "$i" -eq 60 ]; then
-    echo "oidc-hook: Authelia health not reachable - skip (will retry next start)"
+    echo "oidc-hook: Authentik health not reachable - skip (will retry next start)"
     exit 0
   fi
   i=$((i + 1))
@@ -93,17 +91,19 @@ ${OCC} user_oidc:provider "${PROVIDER_ID}" \
   --clientid="${CLIENT_ID}" \
   --clientsecret="${CLIENT_SECRET}" \
   --discoveryuri="${DISCOVERY}" \
-  --scope="openid email profile groups" \
+  --scope="openid email profile" \
   --unique-uid=0 \
   --mapping-uid=preferred_username \
   --mapping-display-name=name \
   --mapping-email=email \
   >/dev/null
 
-# Drop legacy Keycloak provider name if present (migration).
-if [ "${PROVIDER_ID}" != "Keycloak" ]; then
-  ${OCC} user_oidc:provider:delete Keycloak 2>/dev/null || true
-fi
+# Drop legacy IdP provider names if present (migration).
+for legacy in Keycloak Authelia; do
+  if [ "${PROVIDER_ID}" != "${legacy}" ]; then
+    ${OCC} user_oidc:provider:delete "${legacy}" 2>/dev/null || true
+  fi
+done
 
 ${OCC} config:app:set user_oidc allow_multiple_user_backends --value=1 >/dev/null
 ${OCC} config:app:delete user_oidc allow_insecure_http >/dev/null 2>&1 || true

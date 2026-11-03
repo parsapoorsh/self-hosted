@@ -1,4 +1,4 @@
-# Edge: Authelia IdP (Anubis bypass).
+# Edge: Authentik IdP (Anubis bypass).
 # Public: auth.__DOMAIN__ and auth.localhost
 
 # TEMPORARY: HTTP -> HTTPS for public hosts.
@@ -15,5 +15,5 @@ server {
 
     include /etc/nginx/self-hosted/snippets/edge-tls.conf;
     include /etc/nginx/self-hosted/cloudflare.conf;
-    include /etc/nginx/self-hosted/snippets/authelia-proxy.conf;
+    include /etc/nginx/self-hosted/snippets/authentik-proxy.conf;
 }

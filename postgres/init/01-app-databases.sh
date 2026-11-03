@@ -52,6 +52,7 @@ create_app_db() {
 
 # --- app databases ---
 create_app_db nextcloud nextcloud "${NEXTCLOUD_DB_PASSWORD:-}"
-create_app_db authelia authelia "${AUTH_DB_PASSWORD:-}"
+# Authentik DB role (password env still AUTH_DB_PASSWORD for existing .env.secrets).
+create_app_db authentik authentik "${AUTH_DB_PASSWORD:-}"
 create_app_db mattermost mattermost "${MATTERMOST_DB_PASSWORD:-}"
 create_app_db nexspence nexspence "${NEXSPENCE_DB_PASSWORD:-}"

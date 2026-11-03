@@ -1,0 +1,142 @@
+# Open self-registration (username + password + name + email), then login.
+# Linked from the default identification stage so the login page shows "Sign up".
+version: 1
+metadata:
+  name: self-hosted - Enrollment
+entries:
+  - identifiers:
+      slug: default-enrollment-flow
+    model: authentik_flows.flow
+    id: flow
+    attrs:
+      name: Self-hosted enrollment
+      title: Create an account
+      designation: enrollment
+      authentication: require_unauthenticated
+
+  - id: prompt-field-username
+    model: authentik_stages_prompt.prompt
+    identifiers:
+      name: self-hosted-enrollment-field-username
+    attrs:
+      field_key: username
+      label: Username
+      type: username
+      required: true
+      placeholder: Username
+      placeholder_expression: false
+      order: 0
+
+  - identifiers:
+      name: self-hosted-enrollment-field-password
+    id: prompt-field-password
+    model: authentik_stages_prompt.prompt
+    attrs:
+      field_key: password
+      label: Password
+      type: password
+      required: true
+      placeholder: Password
+      placeholder_expression: false
+      order: 0
+
+  - identifiers:
+      name: self-hosted-enrollment-field-password-repeat
+    id: prompt-field-password-repeat
+    model: authentik_stages_prompt.prompt
+    attrs:
+      field_key: password_repeat
+      label: Password (repeat)
+      type: password
+      required: true
+      placeholder: Password (repeat)
+      placeholder_expression: false
+      order: 1
+
+  - identifiers:
+      name: self-hosted-enrollment-field-name
+    id: prompt-field-name
+    model: authentik_stages_prompt.prompt
+    attrs:
+      field_key: name
+      label: Name
+      type: text
+      required: true
+      placeholder: Name
+      placeholder_expression: false
+      order: 0
+
+  - identifiers:
+      name: self-hosted-enrollment-field-email
+    id: prompt-field-email
+    model: authentik_stages_prompt.prompt
+    attrs:
+      field_key: email
+      label: Email
+      type: email
+      required: true
+      placeholder: Email
+      placeholder_expression: false
+      order: 1
+
+  - identifiers:
+      name: self-hosted-enrollment-prompt-first
+    id: default-enrollment-prompt-first
+    model: authentik_stages_prompt.promptstage
+    attrs:
+      fields:
+        - !KeyOf prompt-field-username
+        - !KeyOf prompt-field-password
+        - !KeyOf prompt-field-password-repeat
+
+  - identifiers:
+      name: self-hosted-enrollment-prompt-second
+    id: default-enrollment-prompt-second
+    model: authentik_stages_prompt.promptstage
+    attrs:
+      fields:
+        - !KeyOf prompt-field-name
+        - !KeyOf prompt-field-email
+
+  - identifiers:
+      name: self-hosted-enrollment-user-write
+    id: default-enrollment-user-write
+    model: authentik_stages_user_write.userwritestage
+    attrs:
+      user_creation_mode: always_create
+
+  - identifiers:
+      name: self-hosted-enrollment-user-login
+    id: default-enrollment-user-login
+    model: authentik_stages_user_login.userloginstage
+
+  - identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf default-enrollment-prompt-first
+      order: 10
+    model: authentik_flows.flowstagebinding
+
+  - identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf default-enrollment-prompt-second
+      order: 11
+    model: authentik_flows.flowstagebinding
+
+  - identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf default-enrollment-user-write
+      order: 20
+    model: authentik_flows.flowstagebinding
+
+  - identifiers:
+      target: !KeyOf flow
+      stage: !KeyOf default-enrollment-user-login
+      order: 100
+    model: authentik_flows.flowstagebinding
+
+  # Show "Sign up" on the login page.
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    attrs:
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-enrollment-flow]]

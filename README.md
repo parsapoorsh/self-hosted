@@ -1,6 +1,6 @@
 # self-hosted * ${domain}
 
-Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps.
+Docker Compose stack behind nginx: **Authentik** (SSO + self-signup), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps; anyone can also create an account on the Authentik login page.
 
 Public edge is **HTTPS**. HTTP on `*.${domain}` temporary-redirects (302) to HTTPS.
 
@@ -11,15 +11,15 @@ Optional edge ports via `.env`: `HTTP_PORT` / `HTTPS_PORT` (defaults 80 / 443). 
 | Host | Service |
 |------|---------|
 | `https://${domain}` / `www` | Landing (`static/`, built from `docs/`) |
-| `https://auth.${domain}` | Authelia (OIDC IdP) |
-| `https://cloud.${domain}` | Nextcloud (OIDC via Authelia) |
-| `https://chat.${domain}` | Mattermost (OIDC via Authelia) |
+| `https://auth.${domain}` | Authentik (OIDC IdP + Sign up) |
+| `https://cloud.${domain}` | Nextcloud (OIDC via Authentik) |
+| `https://chat.${domain}` | Mattermost (OIDC via Authentik) |
 | `https://mirror.${domain}` | Nexspence UI (OIDC) + package APIs |
 | `https://library.${domain}` | Kiwix (optional Anubis) |
 
 Local aliases: `https://mirror.localhost/`, etc.
 
-Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous access. The browser UI uses native Authelia OIDC ("Sign in with Authelia").
+Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous access. The browser UI uses native Authentik OIDC.
 
 ## Requirements
 
@@ -54,7 +54,9 @@ From `.env`:
 - **Username:** `KEYCLOAK_ADMIN` (default `admin`)  
 - **Password:** `KEYCLOAK_ADMIN_PASSWORD`  
 
-Works for Authelia, Nextcloud, Mattermost (SSO), and Nexspence UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authelia.)
+Works for Authentik, Nextcloud, Mattermost (SSO), and Nexspence UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authentik.)
+
+**Self-registration:** open `https://auth.${domain}/` and use **Sign up**.
 
 Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repos (hosted / proxy / group).
 
@@ -72,9 +74,9 @@ Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repo
 
 ### Derived secrets
 
-`./scripts/sync-secrets.sh` -> gitignored `.env.secrets` (DB roles, Authelia HMAC, OIDC clients, Nexspence JWT/cookie).
+`./scripts/sync-secrets.sh` -> gitignored `.env.secrets` (DB roles, Authentik secret/token, OIDC clients, Nexspence JWT/cookie).
 
-Authelia session/OIDC state is stored in Postgres (`authelia` database), same as Nextcloud, Mattermost, and Nexspence. The `auth.localhost` cookie domain is intentional so local TLS (`*.localhost`) and `auth.${domain}` share one IdP.
+Authentik state is stored in Postgres (`authentik` database), same host as Nextcloud, Mattermost, and Nexspence.
 
 ### Landing docs
 
@@ -107,28 +109,25 @@ Localhost tree:
 
 ```bash
 ./scripts/compose.sh ps
-./scripts/compose.sh logs -f authelia
+./scripts/compose.sh logs -f authentik
 ./scripts/compose.sh restart nexspence
 ./scripts/compose.sh down
 ```
 
-### Authelia users
+### Authentik users
 
-```bash
-./scripts/authelia-users.py list
-./scripts/authelia-users.py add alice --email alice@${domain}
-./scripts/authelia-users.py set-password alice
-./scripts/authelia-users.py sync-admin
-```
+- **Self-signup:** `https://auth.${domain}/` → Sign up  
+- **Admin UI:** `https://auth.${domain}/if/admin/` (akadmin or shared admin)  
+- **API bootstrap token:** `AUTHENTIK_BOOTSTRAP_TOKEN` in `.env.secrets`
 
 Full wipe: `./scripts/reset.sh`
 
 ## How SSO is wired
 
-1. **Authelia** - file users, OIDC clients `nextcloud` + `mirror` + `mattermost`, portal on `auth.${domain}`  
-2. **Nextcloud** - `user_oidc` against Authelia  
-3. **Mattermost** - GitLab SSO settings pointed at Authelia OIDC (`/signup/gitlab/complete`)  
-4. **Nexspence UI** - native OIDC to Authelia (`/api/v1/auth/oidc/callback`); OIDC client id is `mirror`  
+1. **Authentik** - OIDC apps `nextcloud` + `mirror` + `mattermost`, portal on `auth.${domain}`, open enrollment  
+2. **Nextcloud** - `user_oidc` against Authentik (`/application/o/nextcloud/`)  
+3. **Mattermost** - GitLab SSO settings pointed at Authentik OAuth2 endpoints  
+4. **Nexspence UI** - native OIDC to Authentik (`/api/v1/auth/oidc/callback`); client id is `mirror`  
 
 Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS (append `:${HTTPS_PORT}` when the edge is not on 443). Mattermost uses `https://chat.${domain}/signup/gitlab/complete` with the same port rule.
 
@@ -147,7 +146,7 @@ docker-compose.yml
 .env / .env.example
 docs/                        # markdown sources (${domain} placeholders)
 static/                      # built HTML (gitignored)
-authelia/ nextcloud/ mattermost/ nexspence/
+authentik/ nextcloud/ mattermost/ nexspence/
 nginx/ postgres/ redis/
 kiwix/ anubis/
 scripts/                     # compose, build-static, certs, smoke
@@ -160,3 +159,4 @@ cert/                        # TLS (gitignored)
 - Changing `KEYCLOAK_ADMIN_PASSWORD` regenerates OIDC secrets on the next compose run.  
 - Nexspence is a Go binary + shared Postgres (`nexspence` database); blobs in the `nexspence_blobs` volume.  
 - If Cloudflare sits in front, use **Full (strict)** SSL so HTTP->HTTPS at origin does not loop.  
+- Migration from Authelia: stop the stack, `./scripts/compose.sh up -d` (new `authentik` DB). Old Authelia file users are not imported; use Sign up or the admin UI.  
