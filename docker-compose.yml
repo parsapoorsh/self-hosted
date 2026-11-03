@@ -20,13 +20,6 @@ services:
       - self-hosted
     depends_on:
       - anubis
-      - kiwix
-      - authelia
-      - nextcloud
-      - nexus
-      - apt-group
-      - nexus-oauth2-proxy
-      - nexus-oauth2-local
     restart: unless-stopped
 
   anubis:
@@ -183,6 +176,8 @@ services:
       - ./nexus/catalog.json:/init/catalog.json:ro
       # Created by scripts/compose.sh (openssl); used for Alpine repo signing
       - ./cert/alpine.key:/init/alpine.key:ro
+      # Silence broken blobstore reconciliation logback sifting appender
+      - ./nexus/logback.xml:/opt/sonatype/nexus/etc/logback/logback.xml:ro
     networks:
       - self-hosted
     # Ceiling above INSTALL4J heap+direct in nexus/env (~1.3g budget).
