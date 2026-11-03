@@ -138,16 +138,19 @@ if [[ -n "${NX_IP}" ]]; then
     bad "nexspence admin auth HTTP ${code}"
   fi
 
-  anon="$(curl -sS --max-time 10 -u "${ADMIN_USER}:${ADMIN_PASS}" \
-    "http://${NX_IP}:8081/service/rest/v1/security/anonymous" \
-    | python3 -c 'import sys,json; print(json.load(sys.stdin).get("enabled"))' 2>/dev/null || echo conf)"
-  if [[ "${anon}" == "True" || "${anon}" == "true" ]]; then
-    ok "nexspence anonymous enabled"
+  # Anonymous is per-repository (allow_anonymous); no global /security/anonymous API.
+  anon_repos="$(curl -sS --max-time 15 -u "${ADMIN_USER}:${ADMIN_PASS}" \
+    -H "Accept: application/json" \
+    "http://${NX_IP}:8081/service/rest/v1/repositories" \
+    | python3 -c 'import sys,json; r=json.load(sys.stdin); print(sum(1 for x in r if x.get("allowAnonymous") or x.get("allow_anonymous")))' 2>/dev/null || echo 0)"
+  if [[ "${anon_repos}" =~ ^[0-9]+$ ]] && (( anon_repos >= 1 )); then
+    ok "nexspence repos with anonymous pull count=${anon_repos}"
   else
-    bad "nexspence anonymous enabled=${anon}"
+    bad "nexspence repos with anonymous pull count=${anon_repos}"
   fi
 
   repos="$(curl -sS --max-time 15 -u "${ADMIN_USER}:${ADMIN_PASS}" \
+    -H "Accept: application/json" \
     "http://${NX_IP}:8081/service/rest/v1/repositories" \
     | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null || echo 0)"
   if [[ "${repos}" -ge 10 ]]; then
@@ -177,14 +180,14 @@ else
   bad "edge mirror.localhost UI HTTP ${code}"
 fi
 
-# Package path must not require browser SSO.
+# Public auth config (no browser SSO). Status is auth-gated.
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 \
   -H "Host: mirror.localhost${HTTPS_HOST_SUFFIX}" \
-  "${EDGE_HTTPS}/service/rest/v1/status" || echo 000)"
+  "${EDGE_HTTPS}/api/v1/auth/config" || echo 000)"
 if [[ "${code}" == "200" ]]; then
-  ok "edge mirror status"
+  ok "edge mirror auth/config"
 else
-  bad "edge mirror status HTTP ${code}"
+  bad "edge mirror auth/config HTTP ${code}"
 fi
 
 # HTTP -> HTTPS must be temporary (302) and keep the configured HTTPS port.
