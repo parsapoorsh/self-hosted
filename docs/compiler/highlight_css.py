@@ -11,24 +11,24 @@ LIGHT_STYLE = "default"
 DARK_STYLE = "monokai"
 
 # Global layout rules from Pygments; page template owns pre background.
-_SKIP_PREFIXES = (
+SKIP_PREFIXES = (
     "pre {",
     "td.linenos",
     "span.linenos",
 )
-_WRAPPER_RE = re.compile(rf"\.{re.escape(CSS_CLASS)}\s*\{{")
+WRAPPER_RE = re.compile(rf"\.{re.escape(CSS_CLASS)}\s*\{{")
 
 
-def _token_rules(style: str) -> list[str]:
+def token_rules(style: str) -> list[str]:
     raw = HtmlFormatter(style=style).get_style_defs(f".{CSS_CLASS}")
     out: list[str] = []
     for line in raw.splitlines():
         s = line.strip()
         if not s:
             continue
-        if any(s.startswith(p) for p in _SKIP_PREFIXES):
+        if any(s.startswith(p) for p in SKIP_PREFIXES):
             continue
-        if _WRAPPER_RE.match(s):
+        if WRAPPER_RE.match(s):
             continue
         out.append(s)
     return out
@@ -36,8 +36,8 @@ def _token_rules(style: str) -> list[str]:
 
 def build_highlight_css() -> str:
     """Light token colors, plus dark overrides under the theme toggle."""
-    light = _token_rules(LIGHT_STYLE)
-    dark = _token_rules(DARK_STYLE)
+    light = token_rules(LIGHT_STYLE)
+    dark = token_rules(DARK_STYLE)
     lines = [
         "/* Pygments token colors (compile-time; light defaults). */",
         *light,
