@@ -5,7 +5,7 @@ page_title: README · ${domain}
 
 # self-hosted · ${domain}
 
-Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Nexus Repository**, **apt-group** (merged APT), **Kiwix**, and a static landing page. One human admin is shared across the apps.
+Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Nexus Repository**, **Kiwix**, and a static landing page. One human admin is shared across the apps.
 
 Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects to HTTPS.
 
@@ -16,7 +16,7 @@ Public edge is **HTTPS** (`APP_SCHEME=https`). HTTP on `*.${domain}` redirects t
 | `https://${domain}` / `www` | Landing (`static/`, built from `docs/`) |
 | `https://auth.${domain}` | Authelia (OIDC IdP) |
 | `https://cloud.${domain}` | Nextcloud (OIDC via Authelia) |
-| `https://nexus.${domain}` | Nexus UI (OIDC) + package APIs + apt-group |
+| `https://nexus.${domain}` | Nexus UI (OIDC) + package APIs |
 | `https://kiwix.${domain}` | Kiwix (optional Anubis) |
 
 Local aliases: `https://nexus.localhost/`, etc.
@@ -109,7 +109,6 @@ Localhost tree:
 ./scripts/compose.sh ps
 ./scripts/compose.sh logs -f authelia
 ./scripts/compose.sh restart nexus
-./scripts/compose.sh up -d --build apt-group
 ./scripts/compose.sh down
 ```
 
@@ -134,10 +133,7 @@ Redirect URI must be `https://nexus.${domain}/oauth2/callback` when the site is 
 
 ## Package mirrors
 
-Client guides:
-
-- **[APT](apt.html)** — merged Ubuntu/Debian/Kali group  
-- **[Nexus](nexus.html)** — cargo, pip, docker, npm, go, …  
+Client guide: **[Nexus](nexus.html)** — cargo, pip, docker, npm, go, …
 
 Mirror priority in the catalog prefers **cdn.ir**, then **Arvancloud**, then other members.
 
@@ -148,7 +144,6 @@ docker-compose.yml
 .env / .env.example
 docs/                        # markdown sources (${domain} placeholders)
 static/                      # built HTML (gitignored)
-apt-group/                   # merged APT sidecar
 authelia/ nextcloud/ nexus/
 nginx/ postgres/ redis/
 kiwix/ anubis/

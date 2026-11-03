@@ -145,26 +145,6 @@ else
   bad "nexus container IP"
 fi
 
-AG_IP="$(container_ip apt-group || true)"
-if [[ -n "${AG_IP}" ]]; then
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-    "http://${AG_IP}:8080/healthz" || echo 000)"
-  if [[ "${code}" == "200" ]]; then
-    ok "apt-group health"
-  else
-    bad "apt-group health HTTP ${code}"
-  fi
-  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
-    "http://${AG_IP}:8080/repository/apt/key.asc" || echo 000)"
-  if [[ "${code}" == "200" ]]; then
-    ok "apt-group public key"
-  else
-    bad "apt-group public key HTTP ${code}"
-  fi
-else
-  bad "apt-group container IP"
-fi
-
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Host: auth.localhost" \
   "https://127.0.0.1/.well-known/openid-configuration" || echo 000)"

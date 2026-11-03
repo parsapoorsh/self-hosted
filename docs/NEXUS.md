@@ -123,23 +123,6 @@ composer install
 
 ---
 
-## APT (Debian / Ubuntu / Kali)
-
-See **[APT](apt.html)** for full steps.
-
-```bash
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://nexus.${domain}/repository/apt/key.asc \
-  | sudo tee /etc/apt/keyrings/nexus-apt-group.asc >/dev/null
-
-echo 'deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] https://nexus.${domain}/repository/apt jammy main universe' \
-  | sudo tee /etc/apt/sources.list.d/nexus-apt.list
-
-sudo apt-get update
-```
-
----
-
 ## Alpine (apk)
 
 ```bash
@@ -167,7 +150,6 @@ export HF_ENDPOINT=https://nexus.${domain}/repository/huggingface-upstream
 curl -fsS -o /dev/null -w "%{http_code}\n" https://nexus.${domain}/repository/pypi/simple/pip/
 curl -fsS -o /dev/null -w "%{http_code}\n" https://nexus.${domain}/repository/npm/lodash
 curl -fsS -o /dev/null -w "%{http_code}\n" https://nexus.${domain}/repository/cargo/config.json
-curl -fsS -o /dev/null -w "%{http_code}\n" https://nexus.${domain}/repository/apt/
 ```
 
 ---
@@ -184,6 +166,5 @@ curl -fsS -o /dev/null -w "%{http_code}\n" https://nexus.${domain}/repository/ap
 | NuGet | `https://nexus.${domain}/repository/nuget/index.json` |
 | Composer | `https://nexus.${domain}/repository/composer/` |
 | Alpine | `https://nexus.${domain}/repository/alpine/…` |
-| APT | `https://nexus.${domain}/repository/apt/` |
 | Docker | `nexus.${domain}/repository/docker/…` |
 | Node dist | `https://nexus.${domain}/repository/nodejs/` |

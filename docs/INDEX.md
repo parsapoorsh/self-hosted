@@ -8,7 +8,7 @@ page_title: Self-hosted · ${domain}
 
 # Self-hosted on **${domain}**
 
-Authelia SSO · Nextcloud · Nexus package mirrors · APT group · Kiwix
+Authelia SSO · Nextcloud · Nexus package mirrors · Kiwix
 </md-center>
 
 ---
@@ -17,7 +17,6 @@ Authelia SSO · Nextcloud · Nexus package mirrors · APT group · Kiwix
 
 | Guide | What it covers |
 |-------|----------------|
-| **[APT](apt.html)** | Ubuntu, Debian, and Kali through the merged apt group (`/repository/apt/`) |
 | **[Nexus](nexus.html)** | Cargo, pip, Docker, npm, Go, NuGet, Composer, Alpine, and more |
 | **[README](readme.html)** | Install the stack, TLS, SSO, day-to-day ops |
 
@@ -39,8 +38,6 @@ HTTP on these names redirects to HTTPS. Package clients use **https://nexus.${do
 
 ## Quick links
 
-- APT group root: [https://nexus.${domain}/repository/apt/](https://nexus.${domain}/repository/apt/)
-- APT signing key: [https://nexus.${domain}/repository/apt/key.asc](https://nexus.${domain}/repository/apt/key.asc)
 - PyPI simple: [https://nexus.${domain}/repository/pypi/simple/](https://nexus.${domain}/repository/pypi/simple/)
 
 Local testing uses the same paths under `*.localhost` (for example `https://nexus.localhost/`).
