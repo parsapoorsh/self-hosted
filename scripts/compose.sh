@@ -106,13 +106,16 @@ for arg in "$@"; do
   esac
 done
 
+# Calls ICE host is required for compose interpolation whenever mattermost is
+# referenced (up, exec, config, …).
+ensure_calls_ice_host
+
 # Fail before docker starts so nginx does not crash-loop on missing DOMAIN cert
 # or an empty landing site.
 case "${cmd}" in
   up|start|restart)
     require_domain_cert
     ensure_static
-    ensure_calls_ice_host
     ;;
 esac
 

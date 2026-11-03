@@ -135,9 +135,33 @@ for u in json.loads(raw[start:]):
   )
 }
 
+# Calls "test mode" (DefaultEnabled=false) limits starts to system admins.
+# mmctl config set cannot write nested plugin keys; use config patch instead.
+ensure_calls_enabled() {
+  local patch
+  log "enabling Calls for all users (DefaultEnabled=true)"
+  patch="$(mktemp)"
+  printf '%s\n' \
+    '{"PluginSettings":{"Plugins":{"com.mattermost.calls":{"defaultenabled":true}}}}' \
+    >"${patch}"
+  # Config volume is uid 2000; root-owned docker cp files are unreadable to mmctl.
+  docker run --rm \
+    -u 2000:2000 \
+    -v self-hosted_mattermost_config:/c \
+    -v "${patch}:/patch.json:ro" \
+    alpine \
+    cp /patch.json /c/mm-calls-enabled.json
+  rm -f "${patch}"
+  if ! mmctl config patch /mattermost/config/mm-calls-enabled.json >/dev/null; then
+    log "warn: could not patch Calls DefaultEnabled"
+    return 0
+  fi
+}
+
 wait_mattermost
 ensure_systems
 ensure_team
 remove_off_topic
 add_users_to_team
+ensure_calls_enabled
 log "done"

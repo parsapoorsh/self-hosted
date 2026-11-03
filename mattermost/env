@@ -37,3 +37,6 @@ MM_SERVICESETTINGS_ENABLEDESKTOPLANDINGPAGE=false
 MM_SERVICESETTINGS_ENABLEGIFPICKER=false
 # Hide "Preview Mode: Email notifications have not been configured."
 MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false
+
+# Calls: leave test mode (DefaultEnabled=false → admins only). true = everyone.
+MM_CALLS_DEFAULTENABLED=true
