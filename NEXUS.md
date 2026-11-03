@@ -226,6 +226,32 @@ composer install
 
 ---
 
+## APT (Debian / Ubuntu / Kali)
+
+Merged group (apt-group sidecar): `apt` → `${NEXUS}/repository/apt/`
+
+One base URL; pick the suite on the `deb` line. Architectures published: **amd64**, **i386**. Metadata is the **union of versions** across Nexus apt proxies (downgrades still possible while a member has the old build). Indexes are re-signed with the group key.
+
+```bash
+# trust group key once
+curl -fsS "${NEXUS}/repository/apt/key.asc" | sudo tee /etc/apt/keyrings/nexus-apt-group.asc >/dev/null
+
+# examples (same path, different suites)
+cat <<EOF | sudo tee /etc/apt/sources.list.d/nexus-apt.list
+deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] ${NEXUS}/repository/apt jammy main restricted universe multiverse
+deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] ${NEXUS}/repository/apt bookworm main contrib non-free non-free-firmware
+deb [signed-by=/etc/apt/keyrings/nexus-apt-group.asc] ${NEXUS}/repository/apt kali-rolling main contrib non-free non-free-firmware
+EOF
+
+sudo apt-get update
+```
+
+Suites and member order live in `nexus/catalog.json` → `aptGroup`. Individual Nexus apt proxies remain at `/repository/<name>/` (e.g. `ubuntu-arvancloud`, `debian-liara`).
+
+Merge is family-scoped (ubuntu / debian / kali members only for matching suites), capped by `maxMembersPerSuite` (default 3), and keeps a **union of versions** so pins/downgrades still work while a member has the old build.
+
+---
+
 ## Alpine (apk)
 
 Group: `alpine` → `${NEXUS}/repository/alpine/`
@@ -290,6 +316,7 @@ curl -sS -u "${NEXUS_USER}:${NEXUS_PASS}" \
 | NuGet | `nuget` | `/repository/nuget/index.json` |
 | Composer | `composer` | `/repository/composer/` |
 | Alpine apk | `alpine` | `/repository/alpine/<ver>/<branch>` |
+| APT (Debian/Ubuntu/Kali) | `apt` (sidecar) | `/repository/apt/` + suite on `deb` line |
 | Docker Hub | `docker` | `/repository/docker/…` |
 | GHCR | `ghcr` | `/repository/ghcr/…` |
 | K8s registry | `k8s` | `/repository/k8s/…` |

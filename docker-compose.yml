@@ -24,6 +24,7 @@ services:
       - authelia
       - nextcloud
       - nexus
+      - apt-group
       - nexus-oauth2-proxy
       - nexus-oauth2-local
     restart: unless-stopped
@@ -197,6 +198,36 @@ services:
       retries: 20
       start_period: 180s
 
+  # Merged APT archive over Nexus apt proxies (single /repository/apt URL).
+  apt-group:
+    build: ./apt-group
+    environment:
+      APT_GROUP_LISTEN: 0.0.0.0:8080
+      APT_GROUP_NEXUS_URL: http://nexus:8081
+      APT_GROUP_CATALOG: /init/catalog.json
+      APT_GROUP_KEYS_DIR: /keys
+      APT_GROUP_CACHE_DIR: /var/cache/apt-group
+      APT_GROUP_LOG: INFO
+    volumes:
+      - ./nexus/catalog.json:/init/catalog.json:ro
+      - ./cert/apt-group:/keys
+      - apt_group_cache:/var/cache/apt-group
+    depends_on:
+      nexus:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    mem_limit: 1536m
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -sf http://127.0.0.1:8080/healthz || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
   # Nexus UI SSO for nexus.<DOMAIN> (Authelia OIDC via oauth2-proxy + Rut Auth)
   nexus-oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
@@ -248,4 +279,5 @@ volumes:
   postgres_data:
   nextcloud_html:
   nexus_data:
+  apt_group_cache:
   authelia_data:
