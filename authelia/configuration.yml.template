@@ -193,12 +193,12 @@ __JWKS_PEM__
         claims_policy: 'mattermost'
         require_pkce: false
         redirect_uris:
-          - 'https://mattermost.__DOMAIN__/signup/gitlab/complete'
-          - 'http://mattermost.__DOMAIN__/signup/gitlab/complete'
-          - 'https://mattermost.localhost/signup/gitlab/complete'
-          - 'https://mattermost.__DOMAIN__/login/gitlab/complete'
-          - 'http://mattermost.__DOMAIN__/login/gitlab/complete'
-          - 'https://mattermost.localhost/login/gitlab/complete'
+          - 'https://chat.__DOMAIN__/signup/gitlab/complete'
+          - 'http://chat.__DOMAIN__/signup/gitlab/complete'
+          - 'https://chat.localhost/signup/gitlab/complete'
+          - 'https://chat.__DOMAIN__/login/gitlab/complete'
+          - 'http://chat.__DOMAIN__/login/gitlab/complete'
+          - 'https://chat.localhost/login/gitlab/complete'
         # openid only + mattermost (no profile/email scopes - those force
         # preferred_username=admin and email=admin@... via Authelia defaults).
         scopes:

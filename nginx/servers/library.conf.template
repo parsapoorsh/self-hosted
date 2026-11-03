@@ -2,7 +2,7 @@
 
 server {
     listen 8080;
-    server_name kiwix.__DOMAIN__ kiwix.localhost;
+    server_name library.__DOMAIN__ library.localhost;
 
     include /etc/nginx/self-hosted/snippets/backend-realip.conf;
 

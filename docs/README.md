@@ -16,9 +16,9 @@ Public edge is **HTTPS**. HTTP on `*.${domain}` redirects to HTTPS.
 | `https://${domain}` / `www` | Landing (`static/`, built from `docs/`) |
 | `https://auth.${domain}` | Authelia (OIDC IdP) |
 | `https://cloud.${domain}` | Nextcloud (OIDC via Authelia) |
-| `https://mattermost.${domain}` | Mattermost (OIDC via Authelia) |
+| `https://chat.${domain}` | Mattermost (OIDC via Authelia) |
 | `https://mirror.${domain}` | Nexspence UI (OIDC) + package APIs |
-| `https://kiwix.${domain}` | Kiwix (optional Anubis) |
+| `https://library.${domain}` | Kiwix (optional Anubis) |
 
 Local aliases: `https://mirror.localhost/`, etc.
 
@@ -132,7 +132,7 @@ Full wipe: `./scripts/reset.sh`
 3. **Mattermost** - GitLab SSO settings pointed at Authelia OIDC (`/signup/gitlab/complete`)  
 4. **Nexspence UI** - native OIDC to Authelia (`/api/v1/auth/oidc/callback`); OIDC client id is `mirror`  
 
-Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS. Mattermost uses `https://mattermost.${domain}/signup/gitlab/complete`.
+Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS. Mattermost uses `https://chat.${domain}/signup/gitlab/complete`.
 
 ## Package mirrors
 

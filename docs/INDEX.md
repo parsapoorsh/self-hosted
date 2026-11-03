@@ -29,9 +29,9 @@ Authelia SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 | [https://${domain}](https://${domain}/) | Landing (this site) |
 | [https://auth.${domain}](https://auth.${domain}/) | Authelia (login / OIDC) |
 | [https://cloud.${domain}](https://cloud.${domain}/) | Nextcloud |
-| [https://mattermost.${domain}](https://mattermost.${domain}/) | Mattermost |
+| [https://chat.${domain}](https://chat.${domain}/) | Mattermost |
 | [https://mirror.${domain}](https://mirror.${domain}/) | Nexspence UI + package APIs |
-| [https://kiwix.${domain}](https://kiwix.${domain}/) | Kiwix |
+| [https://library.${domain}](https://library.${domain}/) | Kiwix |
 
 ---
 

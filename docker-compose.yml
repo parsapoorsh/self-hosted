@@ -240,7 +240,7 @@ services:
       - ./mattermost/env
     environment:
       DOMAIN: ${DOMAIN:-example.com}
-      MM_SERVICESETTINGS_SITEURL: https://mattermost.${DOMAIN:-example.com}
+      MM_SERVICESETTINGS_SITEURL: https://chat.${DOMAIN:-example.com}
       MM_TEAMSETTINGS_SITENAME: ${ORG_NAME}
       MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${MATTERMOST_DB_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
       MM_GITLABSETTINGS_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}

@@ -1,17 +1,17 @@
 # Edge: Mattermost (Anubis bypass).
-# SSO via Authelia (GitLabSettings -> OIDC). Public: mattermost.__DOMAIN__ and mattermost.localhost
+# SSO via Authelia (GitLabSettings -> OIDC). Public: chat.__DOMAIN__ and chat.localhost
 
 # TEMPORARY: HTTP -> HTTPS for public hosts.
 server {
     listen 80;
-    server_name mattermost.__DOMAIN__;
+    server_name chat.__DOMAIN__;
 
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name mattermost.__DOMAIN__ mattermost.localhost;
+    server_name chat.__DOMAIN__ chat.localhost;
 
     include /etc/nginx/self-hosted/snippets/edge-tls.conf;
     include /etc/nginx/self-hosted/cloudflare.conf;

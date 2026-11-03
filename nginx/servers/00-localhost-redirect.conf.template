@@ -2,7 +2,7 @@
 server {
     listen 80;
     server_name localhost www.localhost
-                auth.localhost cloud.localhost mirror.localhost kiwix.localhost
-                mattermost.localhost;
+                auth.localhost cloud.localhost mirror.localhost library.localhost
+                chat.localhost;
     return 301 https://$host$request_uri;
 }
