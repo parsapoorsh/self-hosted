@@ -1,2 +1,3 @@
 markdown>=3.5
 beautifulsoup4>=4.12
+pygments>=2.17
