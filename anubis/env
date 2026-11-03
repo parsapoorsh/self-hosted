@@ -2,3 +2,5 @@
 BIND=:8923
 TARGET=http://nginx:8080
 POLICY_FNAME=/data/cfg/botPolicy.yaml
+COOKIE_SECURE=true
+COOKIE_PARTITIONED=true

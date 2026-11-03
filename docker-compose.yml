@@ -32,9 +32,6 @@ services:
     image: ghcr.io/techarohq/anubis:latest
     env_file:
       - ./anubis/env
-    environment:
-      COOKIE_SECURE: "true"
-      COOKIE_PARTITIONED: "true"
     volumes:
       - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
     networks:
@@ -107,13 +104,8 @@ services:
       # Both names; do not set OVERWRITEHOST (breaks cloud.localhost).
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com} cloud.localhost
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-https://cloud.${DOMAIN:-example.com}}
-      OVERWRITEPROTOCOL: https
-      # Trust docker/edge so X-Forwarded-Proto from nginx is honored.
-      TRUSTED_PROXIES: ${NEXTCLOUD_TRUSTED_PROXIES:-10.0.0.0/8 172.16.0.0/12 192.168.0.0/16}
       DOMAIN: ${DOMAIN:-example.com}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      OIDC_PROVIDER_ID: ${OIDC_PROVIDER_ID:-Authelia}
     volumes:
       - nextcloud_html:/var/www/html
       - ./nextcloud/hooks:/docker-entrypoint-hooks.d:ro
@@ -138,18 +130,13 @@ services:
       DOMAIN: ${DOMAIN:-example.com}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      MIRROR_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
       MIRROR_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
-      MATTERMOST_OIDC_CLIENT_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
       MATTERMOST_OIDC_CLIENT_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       STORAGE_ENCRYPTION_KEY: ${STORAGE_ENCRYPTION_KEY}
       OIDC_HMAC_SECRET: ${OIDC_HMAC_SECRET}
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      # Enables /app/healthcheck.sh
-      X_AUTHELIA_HEALTHCHECK: "1"
     volumes:
       - ./authelia/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
       - ./authelia/configuration.yml.template:/init/configuration.yml.template:ro
@@ -186,19 +173,12 @@ services:
       NEXSPENCE_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
       NEXSPENCE_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       # Authelia OIDC (native UI SSO). Issuer via nginx TLS edge.
-      NEXSPENCE_OIDC_ENABLED: "true"
-      NEXSPENCE_OIDC_DISPLAY_NAME: Authelia
       NEXSPENCE_OIDC_ISSUER: https://auth.${DOMAIN:-example.com}
       NEXSPENCE_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
       NEXSPENCE_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
       NEXSPENCE_OIDC_REDIRECT_URL: https://mirror.${DOMAIN:-example.com}/api/v1/auth/oidc/callback
       NEXSPENCE_OIDC_FRONTEND_BASE_URL: https://mirror.${DOMAIN:-example.com}
-      NEXSPENCE_OIDC_COOKIE_SECURE: "true"
       NEXSPENCE_OIDC_COOKIE_KEY: ${NEXSPENCE_OIDC_COOKIE_KEY}
-      NEXSPENCE_OIDC_ADMIN_GROUP: admins
-      NEXSPENCE_OIDC_GROUPS_CLAIM: groups
-      NEXSPENCE_OIDC_PROVISIONING: jit
-      NEXSPENCE_OIDC_SCOPES: openid,profile,email,groups
     volumes:
       - nexspence_blobs:/app/data/blobs
       - nexspence_secrets:/app/secrets
@@ -253,6 +233,7 @@ services:
       # ICE host must be a real host IP clients can reach - not chat.$DOMAIN when
       # that resolves to 127.0.0.1 (breaks Docker UDP). compose.sh auto-detects
       # the host primary IPv4 when CALLS_ICE_HOST_OVERRIDE is unset.
+      # Listen ports default in mattermost/env; override here when CALLS_PORT is set.
       MM_CALLS_UDP_SERVER_PORT: ${CALLS_PORT:-8443}
       MM_CALLS_TCP_SERVER_PORT: ${CALLS_PORT:-8443}
       MM_CALLS_ICE_HOST_OVERRIDE: ${CALLS_ICE_HOST_OVERRIDE:?set CALLS_ICE_HOST_OVERRIDE or use ./scripts/compose.sh}

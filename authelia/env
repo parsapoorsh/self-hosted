@@ -1,6 +1,7 @@
-# Authelia constants (human admin + secrets from root .env / .env.secrets).
-# OIDC clients nextcloud + mirror + mattermost.
+# Authelia constants (human admin + secrets from compose / .env.secrets).
 # Dual cookie domains (auth.DOMAIN + auth.localhost) live in configuration.yml.template.
 OIDC_CLIENT_ID=nextcloud
 MIRROR_OIDC_CLIENT_ID=mirror
 MATTERMOST_OIDC_CLIENT_ID=mattermost
+# Enables /app/healthcheck.sh
+X_AUTHELIA_HEALTHCHECK=1

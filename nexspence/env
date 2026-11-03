@@ -1,4 +1,4 @@
-# Nexspence constants (admin + DB DSN + OIDC from compose / .env.secrets).
+# Nexspence constants (admin, DB DSN, OIDC secrets/URLs from compose).
 NEXSPENCE_HTTP_ADDR=:8081
 NEXSPENCE_LOG_LEVEL=info
 NEXSPENCE_LOG_FORMAT=json
@@ -9,3 +9,12 @@ NEXSPENCE_AUTH_ANONYMOUS_ENABLED=true
 NEXSPENCE_HTTP_TRUSTED_PROXIES=*
 # Image scanning off unless an operator mounts Trivy.
 NEXSPENCE_SCAN_TRIVY_ENABLED=false
+
+# Authelia OIDC (issuer / redirect / client secret from compose).
+NEXSPENCE_OIDC_ENABLED=true
+NEXSPENCE_OIDC_DISPLAY_NAME=Authelia
+NEXSPENCE_OIDC_COOKIE_SECURE=true
+NEXSPENCE_OIDC_ADMIN_GROUP=admins
+NEXSPENCE_OIDC_GROUPS_CLAIM=groups
+NEXSPENCE_OIDC_PROVISIONING=jit
+NEXSPENCE_OIDC_SCOPES=openid,profile,email,groups

@@ -1,8 +1,10 @@
-# Nextcloud constants (admin + DB password from root .env / .env.secrets).
-# OVERWRITEPROTOCOL / TRUSTED_PROXIES come from compose (https + docker nets).
+# Nextcloud constants (admin + DB password + DOMAIN/OIDC secret from compose).
 POSTGRES_HOST=postgres
 POSTGRES_DB=nextcloud
 POSTGRES_USER=nextcloud
 REDIS_HOST=redis
+OVERWRITEPROTOCOL=https
+# Trust docker/edge so X-Forwarded-Proto from nginx is honored.
+TRUSTED_PROXIES=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
 OIDC_PROVIDER_ID=Authelia
 OIDC_CLIENT_ID=nextcloud

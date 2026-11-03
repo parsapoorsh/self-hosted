@@ -40,3 +40,6 @@ MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false
 
 # Calls: leave test mode (DefaultEnabled=false → admins only). true = everyone.
 MM_CALLS_DEFAULTENABLED=true
+# RTC listen ports (host publish + ICE port override stay in compose via CALLS_PORT).
+MM_CALLS_UDP_SERVER_PORT=8443
+MM_CALLS_TCP_SERVER_PORT=8443
