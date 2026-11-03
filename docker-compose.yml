@@ -250,6 +250,9 @@ services:
       MM_GITLABSETTINGS_AUTHENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
       MM_GITLABSETTINGS_TOKENENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/token
       MM_GITLABSETTINGS_USERAPIENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/userinfo
+      # auth.* resolves to nginx on the compose network (private IP). Mattermost
+      # SSRF guard blocks that unless listed here.
+      MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS: auth.${DOMAIN:-example.com} auth.localhost nginx
     volumes:
       - mattermost_config:/mattermost/config
       - mattermost_data:/mattermost/data
