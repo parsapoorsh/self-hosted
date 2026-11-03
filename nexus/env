@@ -5,4 +5,6 @@ NEXUS_RUT_HEADER=X-Remote-User
 # Raise -Xmx / MaxDirectMemorySize if status/API OOMs under heavy proxy traffic.
 # upload.url points base telemetry at the loopback sink; loader.path shadows
 # CE usage-limit classes with the patched copies built by docker-entrypoint.sh.
-INSTALL4J_ADD_VM_PARAMS=-Xms256m -Xmx768m -XX:MaxDirectMemorySize=512m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Dnexus.analytics.upload.url=http://127.0.0.1:8099/production/oss/ingest -Dloader.path=/nexus-data/patch/nexus-content-usage-patch.jar
+# preferIPv4Stack: otherwise Jetty can bind :8081 on IPv6 only and other
+# containers cannot reach nexus:8081 on the Docker IPv4 network.
+INSTALL4J_ADD_VM_PARAMS=-Xms256m -Xmx768m -XX:MaxDirectMemorySize=512m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true -Dnexus.skipDefaultRepositories=true -Dnexus.scripts.allowCreation=true -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Dnexus.analytics.upload.url=http://127.0.0.1:8099/production/oss/ingest -Dloader.path=/nexus-data/patch/nexus-content-usage-patch.jar

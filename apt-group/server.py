@@ -253,30 +253,29 @@ class AptGroup:
             self.session = None
 
     def members_for_suite(self, suite: str) -> list[str]:
+        """All family members in priority order (never truncated).
+
+        max_members only caps successful fetches per component/arch slot,
+        so slow/incomplete IR mirrors can still fall through to upstream.
+        """
         family = suite_family(suite)
         override = self.cfg.family_members.get(family)
         if override:
-            names = [m for m in override if m in set(self.cfg.members) or True]
-            # keep catalog order from override list
             ordered = list(override)
         else:
             ordered = [
                 m for m in self.cfg.members
                 if member_matches_family(m, family)
             ]
-            # debian-security: if none, fall back to debian main mirrors
-            if family == "debian-security" and not ordered:
-                ordered = [
+            # Security/backports: try dedicated mirrors first, then main
+            # debian archives (many hosts publish dists/<suite>-security).
+            if family in ("debian-security", "debian-backports"):
+                extra = [
                     m for m in self.cfg.members
-                    if member_matches_family(m, "debian")
+                    if member_matches_family(m, "debian") and m not in ordered
                 ]
-            if family == "debian-backports" and not ordered:
-                ordered = [
-                    m for m in self.cfg.members
-                    if member_matches_family(m, "debian")
-                ]
-        if self.cfg.max_members > 0:
-            ordered = ordered[: self.cfg.max_members]
+                ordered = ordered + extra
+        # Prefer *-upstream last among equals already handled by catalog order.
         return ordered
 
     def components_for_suite(self, suite: str) -> list[str]:
@@ -539,26 +538,38 @@ class AptGroup:
         async def fill_slot(component: str, arch: str) -> None:
             async with slot_sem:
                 hits = 0
-                for member in members:
-                    text = await self.fetch_packages_text(
-                        member,
-                        suite,
-                        component,
-                        arch,
-                        ("Packages.xz", "Packages.gz"),
-                    )
-                    if not text:
-                        stats["miss"] += 1
-                        continue
-                    stanzas = parse_packages(text)
-                    # drop raw text ASAP
-                    del text
-                    bucket = by_comp_arch.setdefault((component, arch), {})
-                    self.merge_stanzas(member, stanzas, bucket, pool_map)
-                    del stanzas
-                    stats["ok"] += 1
-                    hits += 1
-                    if hits >= self.cfg.max_members:
+                # IR/primary first; after a few misses jump to *-upstream.
+                primary = [m for m in members if not m.endswith("-upstream")]
+                upstream = [m for m in members if m.endswith("-upstream")]
+                phases = (primary, upstream) if upstream else (primary,)
+                for phase in phases:
+                    streak_miss = 0
+                    for member in phase:
+                        text = await self.fetch_packages_text(
+                            member,
+                            suite,
+                            component,
+                            arch,
+                            ("Packages.xz", "Packages.gz"),
+                        )
+                        if not text:
+                            stats["miss"] += 1
+                            streak_miss += 1
+                            # Don't burn every IR mirror on 404/timeout.
+                            if phase is primary and streak_miss >= 3 and upstream:
+                                break
+                            continue
+                        streak_miss = 0
+                        stanzas = parse_packages(text)
+                        del text
+                        bucket = by_comp_arch.setdefault((component, arch), {})
+                        self.merge_stanzas(member, stanzas, bucket, pool_map)
+                        del stanzas
+                        stats["ok"] += 1
+                        hits += 1
+                        if self.cfg.max_members > 0 and hits >= self.cfg.max_members:
+                            break
+                    if self.cfg.max_members > 0 and hits >= self.cfg.max_members:
                         break
                 log.info(
                     "suite %s %s/%s hits=%d",
@@ -572,27 +583,35 @@ class AptGroup:
         ])
 
         files: dict[str, bytes] = {}
-        for (component, arch), by_key in by_comp_arch.items():
-            if not by_key:
-                continue
-            ordered = self.order_stanzas(by_key)
-            body = "\n".join(stanza_text(st) for st in ordered)
-            if ordered:
-                body += "\n"
-            raw = body.encode("utf-8")
-            rel = f"{component}/binary-{arch}"
-            files[f"{rel}/Packages"] = raw
-            files[f"{rel}/Packages.gz"] = gzip.compress(raw)
-            files[f"{rel}/Packages.xz"] = lzma.compress(raw)
-            files[f"{rel}/Release"] = (
-                f"Archive: {suite}\n"
-                f"Component: {component}\n"
-                f"Origin: {self.cfg.origin}\n"
-                f"Label: {self.cfg.label}\n"
-                f"Architecture: {arch}\n"
-            ).encode()
+        # Always publish every configured component × arch so InRelease
+        # Components: matches client sources.list (empty Packages if miss).
+        for component in components:
+            for arch in self.cfg.architectures:
+                by_key = by_comp_arch.get((component, arch)) or {}
+                ordered = self.order_stanzas(by_key) if by_key else []
+                body = "\n".join(stanza_text(st) for st in ordered)
+                if ordered:
+                    body += "\n"
+                raw = body.encode("utf-8")
+                rel = f"{component}/binary-{arch}"
+                files[f"{rel}/Packages"] = raw
+                files[f"{rel}/Packages.gz"] = gzip.compress(raw)
+                files[f"{rel}/Packages.xz"] = lzma.compress(raw)
+                files[f"{rel}/Release"] = (
+                    f"Archive: {suite}\n"
+                    f"Component: {component}\n"
+                    f"Origin: {self.cfg.origin}\n"
+                    f"Label: {self.cfg.label}\n"
+                    f"Architecture: {arch}\n"
+                ).encode()
 
-        if not files:
+        # Empty suite = zero packages across all components
+        total_pkgs = sum(
+            1
+            for (c, a), bucket in by_comp_arch.items()
+            if bucket
+        )
+        if total_pkgs == 0:
             log.warning(
                 "suite %s empty ok=%d miss=%d in %.1fs",
                 suite, stats["ok"], stats["miss"], time.monotonic() - t0,
@@ -604,7 +623,8 @@ class AptGroup:
         now = time.gmtime()
         date = time.strftime("%a, %d %b %Y %H:%M:%S UTC", now)
         arches = " ".join(self.cfg.architectures)
-        comps = sorted({p.split("/")[0] for p in files if "/binary-" in p})
+        # Full component list (not only ones that had packages)
+        comps = list(components)
         lines = [
             f"Origin: {self.cfg.origin}",
             f"Label: {self.cfg.label}",
@@ -696,6 +716,58 @@ class AptGroup:
             return age < self.cfg.empty_ttl
         return age < self.cfg.metadata_ttl and bool(art.files)
 
+    def load_disk_suite(self, suite: str) -> SuiteArtifacts | None:
+        """Reload a still-fresh suite from disk after process restart."""
+        sdir = self.cfg.cache_dir / suite
+        inrelease_path = sdir / "InRelease"
+        if not inrelease_path.is_file():
+            return None
+        built_at = inrelease_path.stat().st_mtime
+        age = time.time() - built_at
+        if age > self.cfg.metadata_ttl:
+            return None
+        files: dict[str, bytes] = {}
+        try:
+            for path in sdir.rglob("*"):
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(sdir).as_posix()
+                if rel.startswith(".") or path.name.startswith("."):
+                    continue
+                files[rel] = path.read_bytes()
+        except OSError as exc:
+            log.warning("disk cache read %s: %s", suite, exc)
+            return None
+        if "InRelease" not in files or "Release" not in files:
+            return None
+        pool_map: dict[str, list[PoolSource]] = {}
+        pool_path = sdir / ".pool_map.json"
+        if pool_path.is_file():
+            try:
+                raw_map = json.loads(pool_path.read_text(encoding="utf-8"))
+                for fn, sources in raw_map.items():
+                    pool_map[fn] = [
+                        PoolSource(
+                            member=s["member"],
+                            sha256=s.get("sha256", ""),
+                            size=s.get("size", ""),
+                        )
+                        for s in sources
+                    ]
+            except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+                log.warning("pool map load %s: %s", suite, exc)
+        log.info("suite %s loaded from disk files=%d age=%.0fs", suite, len(files), age)
+        return SuiteArtifacts(
+            suite=suite,
+            built_at=built_at,
+            files=files,
+            pool_map=pool_map,
+            release_raw=files.get("Release", b""),
+            inrelease=files.get("InRelease", b""),
+            release_gpg=files.get("Release.gpg", b""),
+            empty=False,
+        )
+
     async def get_suite(self, suite: str) -> SuiteArtifacts | None:
         if suite not in self.cfg.suites:
             return None
@@ -706,6 +778,10 @@ class AptGroup:
             cached = self.suite_cache.get(suite)
             if cached and self.cache_fresh(cached):
                 return cached
+            disk = self.load_disk_suite(suite)
+            if disk is not None and self.cache_fresh(disk):
+                self.suite_cache[suite] = disk
+                return disk
             art = await self.build_suite(suite)
             self.suite_cache[suite] = art
             return art
@@ -815,7 +891,7 @@ def load_config() -> Config:
         ),
         fetch_timeout=float(
             group.get("memberFetchTimeoutSeconds")
-            or env("APT_GROUP_FETCH_TIMEOUT", "25")
+            or env("APT_GROUP_FETCH_TIMEOUT", "120")
         ),
         connect_timeout=float(
             group.get("connectTimeoutSeconds")

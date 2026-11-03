@@ -388,10 +388,10 @@
       "kali-upstream"
     ],
     "metadataTtlSeconds": 1800,
-    "memberFetchTimeoutSeconds": 25,
+    "memberFetchTimeoutSeconds": 120,
     "memberConcurrency": 2,
-    "maxMembersPerSuite": 3,
-    "connectTimeoutSeconds": 5,
+    "maxMembersPerSuite": 2,
+    "connectTimeoutSeconds": 10,
     "emptyTtlSeconds": 120
   }
 }

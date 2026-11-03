@@ -4,6 +4,19 @@ set -euo pipefail
 
 BOOTSTRAP=/init/bootstrap.sh
 
+# Ensure Jetty listens on IPv4 so sibling containers reach nexus:8081.
+mkdir -p /nexus-data/etc
+props=/nexus-data/etc/nexus.properties
+if [[ -f "${props}" ]]; then
+  if grep -qE '^application-host=' "${props}"; then
+    sed -i 's/^application-host=.*/application-host=0.0.0.0/' "${props}"
+  else
+    printf '\napplication-host=0.0.0.0\n' >>"${props}"
+  fi
+else
+  printf 'application-host=0.0.0.0\n' >"${props}"
+fi
+
 # Build the ContentUsage override JAR before Nexus starts; loader.path loads it
 # ahead of the copy inside the main JAR.
 python3 /init/patch-usage-limit.py || true
