@@ -141,6 +141,8 @@ services:
       AUTHENTIK_BOOTSTRAP_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN}
       AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTH_ADMIN_EMAIL:-${KEYCLOAK_ADMIN:-admin}@${DOMAIN:-example.com}}
+      # Public portal URL (backfills Tenant.base_url on cold start).
+      AUTHENTIK_WEB__BASE_URL: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       # Blueprint env for OIDC client secrets + redirect hosts
       DOMAIN: ${DOMAIN:-example.com}
       HTTPS_PORT_SUFFIX: ${HTTPS_PORT_SUFFIX:-}
@@ -178,6 +180,7 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTH_DB_PASSWORD}
+      AUTHENTIK_WEB__BASE_URL: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       DOMAIN: ${DOMAIN:-example.com}
       HTTPS_PORT_SUFFIX: ${HTTPS_PORT_SUFFIX:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
