@@ -43,6 +43,11 @@ ${OCC} config:system:delete overwritehost >/dev/null 2>&1 || true
 ${OCC} config:system:set overwrite.cli.url \
   --value="https://cloud.${DOMAIN}${HTTPS_PORT_SUFFIX}" >/dev/null
 
+# Drop the first-login modal ("A collaboration platform that puts you in control").
+if ${OCC} app:list --enabled 2>/dev/null | grep -q 'firstrunwizard'; then
+  ${OCC} app:disable firstrunwizard >/dev/null || true
+fi
+
 if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   echo "oidc-hook: installing user_oidc"
   ${OCC} app:install user_oidc 2>/dev/null || true
