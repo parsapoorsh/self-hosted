@@ -74,6 +74,7 @@ services:
       # AUTH_DB_* avoids AUTHELIA_* (Authelia treats those as config env overrides).
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
       MATTERMOST_DB_PASSWORD: ${MATTERMOST_DB_PASSWORD}
+      NEXSPENCE_DB_PASSWORD: ${NEXSPENCE_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -143,8 +144,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-nextcloud}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      NEXUS_OIDC_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
-      NEXUS_OIDC_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
+      MIRROR_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
+      MIRROR_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
       MATTERMOST_OIDC_CLIENT_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
       MATTERMOST_OIDC_CLIENT_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
@@ -171,86 +172,66 @@ services:
       retries: 12
       start_period: 40s
 
-  nexus:
-    image: sonatype/nexus3:3.97.3-ubi
+  # Package registry (Nexus-compatible API). Public host is mirror.${DOMAIN}.
+  nexspence:
+    build: ./nexspence
+    image: self-hosted-nexspence:local
+    user: "1000:1000"
     entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
     env_file:
-      - ./nexus/env
+      - ./nexspence/env
     environment:
-      # Same human admin as Authelia (local API + Rut Auth username)
-      NEXUS_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
-      NEXUS_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      NEXSPENCE_DATABASE_DSN: postgres://nexspence:${NEXSPENCE_DB_PASSWORD}@postgres:5432/nexspence?sslmode=disable
+      NEXSPENCE_HTTP_BASE_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}
+      NEXSPENCE_AUTH_JWT_SECRET: ${NEXSPENCE_AUTH_JWT_SECRET}
+      # Same human admin as Authelia (bootstrap + basic auth for package/API clients)
+      NEXSPENCE_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      NEXSPENCE_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      NEXSPENCE_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
+      NEXSPENCE_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Authelia OIDC (native UI SSO). Issuer via nginx TLS edge.
+      NEXSPENCE_OIDC_ENABLED: "true"
+      NEXSPENCE_OIDC_DISPLAY_NAME: Authelia
+      NEXSPENCE_OIDC_ISSUER: https://auth.${DOMAIN:-example.com}
+      NEXSPENCE_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
+      NEXSPENCE_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
+      NEXSPENCE_OIDC_REDIRECT_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}/api/v1/auth/oidc/callback
+      NEXSPENCE_OIDC_FRONTEND_BASE_URL: ${APP_SCHEME:-https}://mirror.${DOMAIN:-example.com}
+      NEXSPENCE_OIDC_COOKIE_SECURE: "${NEXSPENCE_OIDC_COOKIE_SECURE:-true}"
+      NEXSPENCE_OIDC_COOKIE_KEY: ${NEXSPENCE_OIDC_COOKIE_KEY}
+      NEXSPENCE_OIDC_ADMIN_GROUP: admins
+      NEXSPENCE_OIDC_GROUPS_CLAIM: groups
+      NEXSPENCE_OIDC_PROVISIONING: jit
+      NEXSPENCE_OIDC_SCOPES: openid,profile,email,groups
     volumes:
-      - nexus_data:/nexus-data
-      - ./nexus/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
-      - ./nexus/telemetry-sink.py:/init/telemetry-sink.py:ro
-      - ./nexus/patch-usage-limit.py:/init/patch-usage-limit.py:ro
-      - ./nexus/bootstrap.sh:/init/bootstrap.sh:ro
-      - ./nexus/ensure_repos.py:/init/ensure_repos.py:ro
-      - ./nexus/catalog.json:/init/catalog.json:ro
+      - nexspence_blobs:/app/data/blobs
+      - nexspence_secrets:/app/secrets
+      - ./nexspence/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - ./nexspence/bootstrap.sh:/init/bootstrap.sh:ro
+      - ./nexspence/ensure_repos.py:/init/ensure_repos.py:ro
+      - ./nexspence/catalog.json:/init/catalog.json:ro
       # Created by scripts/compose.sh (openssl); used for Alpine repo signing
       - ./cert/alpine.key:/init/alpine.key:ro
-      # Silence broken blobstore reconciliation logback sifting appender
-      - ./nexus/logback.xml:/opt/sonatype/nexus/etc/logback/logback.xml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authelia:
+        condition: service_healthy
     networks:
       - self-hosted
-    # Ceiling above INSTALL4J heap+direct in nexus/env (~1.3g budget).
-    mem_limit: 1536m
+    mem_limit: 512m
     restart: unless-stopped
-    stop_grace_period: 120s
     healthcheck:
+      # /service/rest/v1/status is auth-gated; auth/config is always public.
       test:
         - CMD-SHELL
         - >-
-          curl -sf http://127.0.0.1:8081/service/rest/v1/status
+          wget -q -O /dev/null http://127.0.0.1:8081/api/v1/auth/config
           || exit 1
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 180s
-
-  # Nexus UI SSO for nexus.<DOMAIN> (Authelia OIDC via oauth2-proxy + Rut Auth)
-  nexus-oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
-    env_file:
-      - ./nexus/oauth2-proxy.env
-    environment:
-      OAUTH2_PROXY_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
-      OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
-      OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
-      OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-true}"
-      OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
-      # Issuer is always https (Authelia session cookies require TLS).
-      # Token/JWKS/userinfo via nginx TLS edge (Authelia 4.39+ needs X-Forwarded-Proto=https).
-      OAUTH2_PROXY_OIDC_ISSUER_URL: https://auth.${DOMAIN:-example.com}
-      OAUTH2_PROXY_LOGIN_URL: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
-      OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
-      OAUTH2_PROXY_REDEEM_URL: https://auth.${DOMAIN:-example.com}/api/oidc/token
-      OAUTH2_PROXY_OIDC_JWKS_URL: https://auth.${DOMAIN:-example.com}/jwks.json
-      OAUTH2_PROXY_PROFILE_URL: https://auth.${DOMAIN:-example.com}/api/oidc/userinfo
-      OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DOMAIN:-example.com},${DOMAIN:-example.com}"
-    depends_on:
-      authelia:
-        condition: service_healthy
-    networks:
-      - self-hosted
-    restart: unless-stopped
-
-  # Nexus UI SSO for https://nexus.localhost/
-  nexus-oauth2-local:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.8.1
-    env_file:
-      - ./nexus/oauth2-local.env
-    environment:
-      OAUTH2_PROXY_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
-      OAUTH2_PROXY_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
-      OAUTH2_PROXY_COOKIE_SECRET: ${NEXUS_OAUTH2_COOKIE_SECRET}
-    depends_on:
-      authelia:
-        condition: service_healthy
-    networks:
-      - self-hosted
-    restart: unless-stopped
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
 
   # Mattermost — Authelia via GitLab SSO settings (works on enterprise image without license)
   mattermost:
@@ -294,7 +275,8 @@ networks:
 volumes:
   postgres_data:
   nextcloud_html:
-  nexus_data:
+  nexspence_blobs:
+  nexspence_secrets:
   authelia_data:
   mattermost_config:
   mattermost_data:

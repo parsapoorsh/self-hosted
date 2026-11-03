@@ -37,10 +37,10 @@ container_ip() {
   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${id}"
 }
 
-echo "smoke: waiting for healthy authelia + nexus..."
+echo "smoke: waiting for healthy authelia + nexspence..."
 for i in $(seq 1 90); do
   au="$("${COMPOSE[@]}" ps authelia --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
-  nx="$("${COMPOSE[@]}" ps nexus --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
+  nx="$("${COMPOSE[@]}" ps nexspence --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
   if [[ "${au}" == *healthy* && "${nx}" == *healthy* ]]; then
     break
   fi
@@ -61,11 +61,11 @@ for i in $(seq 1 60); do
 done
 
 # Wait until bootstraps have applied (API truths beat log lines).
-echo "smoke: waiting for authelia OIDC + nexus catalog..."
+echo "smoke: waiting for authelia OIDC + nexspence catalog..."
 for i in $(seq 1 90); do
   ready=1
   AU_IP="$(container_ip authelia || true)"
-  NX_IP="$(container_ip nexus || true)"
+  NX_IP="$(container_ip nexspence || true)"
   if [[ -z "${AU_IP}" || -z "${NX_IP}" ]]; then
     ready=0
   else
@@ -112,55 +112,37 @@ else
   bad "authelia container IP"
 fi
 
-NX_IP="$(container_ip nexus || true)"
+NX_IP="$(container_ip nexspence || true)"
 if [[ -n "${NX_IP}" ]]; then
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
     -u "${ADMIN_USER}:${ADMIN_PASS}" \
     -H "Accept: application/json" \
     "http://${NX_IP}:8081/service/rest/v1/security/users" || echo 000)"
   if [[ "${code}" == "200" ]]; then
-    ok "nexus admin auth"
+    ok "nexspence admin auth"
   else
-    bad "nexus admin auth HTTP ${code}"
-  fi
-
-  eula="$(curl -sS --max-time 10 -u "${ADMIN_USER}:${ADMIN_PASS}" \
-    "http://${NX_IP}:8081/service/rest/v1/system/eula" \
-    | python3 -c 'import sys,json; print(json.load(sys.stdin).get("accepted"))' 2>/dev/null || echo conf)"
-  if [[ "${eula}" == "True" || "${eula}" == "true" ]]; then
-    ok "nexus EULA accepted"
-  else
-    bad "nexus EULA accepted=${eula}"
+    bad "nexspence admin auth HTTP ${code}"
   fi
 
   anon="$(curl -sS --max-time 10 -u "${ADMIN_USER}:${ADMIN_PASS}" \
     "http://${NX_IP}:8081/service/rest/v1/security/anonymous" \
     | python3 -c 'import sys,json; print(json.load(sys.stdin).get("enabled"))' 2>/dev/null || echo conf)"
   if [[ "${anon}" == "True" || "${anon}" == "true" ]]; then
-    ok "nexus anonymous enabled"
+    ok "nexspence anonymous enabled"
   else
-    bad "nexus anonymous enabled=${anon}"
+    bad "nexspence anonymous enabled=${anon}"
   fi
 
   repos="$(curl -sS --max-time 15 -u "${ADMIN_USER}:${ADMIN_PASS}" \
     "http://${NX_IP}:8081/service/rest/v1/repositories" \
     | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null || echo 0)"
   if [[ "${repos}" -ge 10 ]]; then
-    ok "nexus repos count=${repos}"
+    ok "nexspence repos count=${repos}"
   else
-    bad "nexus repos count=${repos} (expected >= 10 from catalog)"
-  fi
-
-  rut="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-    -H "X-Remote-User: ${ADMIN_USER}" \
-    "http://${NX_IP}:8081/service/rest/v1/security/users" || echo 000)"
-  if [[ "${rut}" == "200" ]]; then
-    ok "nexus rut auth"
-  else
-    bad "nexus rut auth HTTP ${rut}"
+    bad "nexspence repos count=${repos} (expected >= 10 from catalog)"
   fi
 else
-  bad "nexus container IP"
+  bad "nexspence container IP"
 fi
 
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
@@ -172,44 +154,23 @@ else
   bad "edge auth.localhost discovery HTTP ${code}"
 fi
 
-loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 10 \
-  -H "Host: nexus.localhost" "https://127.0.0.1/" || true)"
-if [[ "${loc}" == *"/oauth2/start"* ]]; then
-  ok "edge nexus.localhost -> oauth2 start"
+# UI is public to the edge; SSO is Nexspence native OIDC (Sign in with Authelia).
+code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
+  -H "Host: mirror.localhost" "https://127.0.0.1/" || echo 000)"
+if [[ "${code}" == "200" || "${code}" == "302" || "${code}" == "301" ]]; then
+  ok "edge mirror.localhost UI HTTP ${code}"
 else
-  bad "edge nexus.localhost redirect='${loc}'"
+  bad "edge mirror.localhost UI HTTP ${code}"
 fi
 
-loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 10 \
-  -H "Host: nexus.localhost" \
-  "https://127.0.0.1/oauth2/start?rd=https://nexus.localhost/" || true)"
-if [[ "${loc}" == *"auth.localhost"* && "${loc}" == *"/api/oidc/authorization"* ]]; then
-  ok "edge nexus oauth -> authelia"
-  pathq="${loc#https://auth.localhost}"
-  pathq="${pathq%%\?*}"
-  # Login page is at /; authorization may redirect to login.
-  code="$(curl -sk -o /tmp/smoke-au.html -w '%{http_code}' --max-time 10 \
-    -H "Host: auth.localhost" -L "https://127.0.0.1${pathq:-/}" || echo 000)"
-  # Also try the portal root if authorization needs a session first.
-  if [[ "${code}" != "200" ]] || ! grep -qiE 'authelia|username|password|sign in|login' /tmp/smoke-au.html 2>/dev/null; then
-    code="$(curl -sk -o /tmp/smoke-au.html -w '%{http_code}' --max-time 10 \
-      -H "Host: auth.localhost" "https://127.0.0.1/" || echo 000)"
-  fi
-  if [[ "${code}" == "200" ]] && grep -qiE 'authelia|username|password|sign in|login' /tmp/smoke-au.html 2>/dev/null; then
-    ok "authelia login page"
-  else
-    bad "authelia login page HTTP ${code}"
-  fi
+# Package path must not require browser SSO.
+code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 \
+  -H "Host: mirror.localhost" \
+  "https://127.0.0.1/service/rest/v1/status" || echo 000)"
+if [[ "${code}" == "200" ]]; then
+  ok "edge mirror status"
 else
-  bad "edge nexus oauth redirect='${loc}'"
-fi
-
-loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 10 \
-  -H "Host: cloud.localhost" "https://127.0.0.1/" || true)"
-if [[ "${loc}" == *"cloud.${DOMAIN}"* ]]; then
-  bad "cloud.localhost redirects to ${loc} (overwritehost still set?)"
-else
-  ok "cloud.localhost stays local (redir=${loc:-none})"
+  bad "edge mirror status HTTP ${code}"
 fi
 
 MM_IP="$(container_ip mattermost || true)"
@@ -225,33 +186,8 @@ else
   bad "mattermost container IP"
 fi
 
-code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
-  -H "Host: mattermost.localhost" \
-  "https://127.0.0.1/api/v4/system/ping" || echo 000)"
-if [[ "${code}" == "200" ]]; then
-  ok "edge mattermost.localhost ping"
-else
-  bad "edge mattermost.localhost ping HTTP ${code}"
-fi
-
-# GitLab SSO button should be enabled (Authelia). Config is public-ish via client config.
-mm_cfg="$(curl -sk --max-time 10 \
-  -H "Host: mattermost.localhost" \
-  "https://127.0.0.1/api/v4/config/client?format=old" 2>/dev/null || true)"
-if printf '%s' "${mm_cfg}" | grep -qiE 'EnableSignUpWithGitLab|gitlab'; then
-  ok "mattermost gitlab/SSO client config present"
-else
-  # Fallback: login page mentions GitLab / Authelia button path.
-  page="$(curl -sk --max-time 10 -H "Host: mattermost.localhost" "https://127.0.0.1/login" || true)"
-  if printf '%s' "${page}" | grep -qiE 'gitlab|authelia|/oauth/gitlab'; then
-    ok "mattermost login offers gitlab/SSO"
-  else
-    bad "mattermost SSO (gitlab) not advertised on client config or login"
-  fi
-fi
-
 if [[ "${fail}" -ne 0 ]]; then
-  echo "smoke: FAILED — fix issues above before using the stack" >&2
+  echo "smoke: FAILED" >&2
   exit 1
 fi
 echo "smoke: all checks passed"

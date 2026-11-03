@@ -8,8 +8,8 @@ cd "${ROOT}"
 
 ./scripts/sync-secrets.sh
 
-# Nexus Alpine repos need a stable RSA key (PEM). Create once on the host.
-ensure_nexus_alpine_key() {
+# Alpine repo signing key (PEM). Create once on the host for Nexspence alpine proxies.
+ensure_alpine_signing_key() {
   local key="${ROOT}/cert/alpine.key"
   if [[ -f "${key}" ]]; then
     return 0
@@ -18,14 +18,14 @@ ensure_nexus_alpine_key() {
   echo "compose: creating ${key}"
   openssl genrsa 2048 2>/dev/null \
     | openssl pkcs8 -topk8 -nocrypt -out "${key}"
-  # Nexus container runs as uid 200; bootstrap must read this key.
+  # Nexspence container runs as uid 1000; bootstrap must read this key.
   chmod 644 "${key}"
 }
 # Existing keys may still be 0600 from older compose runs.
 if [[ -f "${ROOT}/cert/alpine.key" ]]; then
   chmod 644 "${ROOT}/cert/alpine.key" || true
 fi
-ensure_nexus_alpine_key
+ensure_alpine_signing_key
 
 # Primary domain TLS material (nginx fails hard without it).
 require_domain_cert() {
@@ -116,6 +116,9 @@ ensure_app_dbs() {
   fi
   if [[ -n "${MATTERMOST_DB_PASSWORD:-}" ]]; then
     ./scripts/pg-app-db.sh mattermost mattermost "${MATTERMOST_DB_PASSWORD}"
+  fi
+  if [[ -n "${NEXSPENCE_DB_PASSWORD:-}" ]]; then
+    ./scripts/pg-app-db.sh nexspence nexspence "${NEXSPENCE_DB_PASSWORD}"
   fi
 }
 

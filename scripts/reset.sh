@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tear down the stack and wipe named volumes (postgres, nextcloud, nexus).
+# Tear down the stack and wipe named volumes (postgres, nextcloud, nexspence).
 # Containers, networks, and compose-declared volumes are removed.
 #
 # Usage:

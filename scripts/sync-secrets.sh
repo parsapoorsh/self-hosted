@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Derive internal service secrets into gitignored .env.secrets.
 # Human login uses KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD only
-# (shared Authelia / Nextcloud / Mattermost / Nexus admin; name kept for existing .env files).
+# (shared Authelia / Nextcloud / Mattermost / Nexspence admin; name kept for existing .env files).
 # Usage: ./scripts/sync-secrets.sh
 #        ./scripts/compose.sh up -d   # runs this first
 set -euo pipefail
@@ -55,10 +55,13 @@ derive_long() {
   derive_hex "$1" "$2"
 }
 
-# oauth2-proxy cookie secret: 24 raw bytes, base64-encoded.
+# Base64 of N raw bytes from the derived hex seed (default 24 for legacy cookies).
 derive_cookie() {
+  local seed="$1"
+  local label="$2"
+  local nbytes="${3:-24}"
   local hex
-  hex="$(derive_hex "$1" "$2" | cut -c1-48)"
+  hex="$(derive_hex "${seed}" "${label}" | cut -c1-$((nbytes * 2)))"
   if command -v xxd >/dev/null 2>&1; then
     printf '%s' "${hex}" | xxd -r -p | base64 -w0 2>/dev/null || printf '%s' "${hex}" | xxd -r -p | base64
   else
@@ -71,6 +74,7 @@ NEXTCLOUD_DB_PASSWORD="$(derive_pass "${PG_PASS}" "nextcloud-db")"
 # AUTH_DB_* name avoids Authelia treating AUTHELIA_* as config env overrides.
 AUTH_DB_PASSWORD="$(derive_pass "${PG_PASS}" "authelia-db")"
 MATTERMOST_DB_PASSWORD="$(derive_pass "${PG_PASS}" "mattermost-db")"
+NEXSPENCE_DB_PASSWORD="$(derive_pass "${PG_PASS}" "nexspence-db")"
 
 # Authelia crypto material tracks POSTGRES_PASSWORD (stable across admin password changes).
 # Names avoid AUTHELIA_* so compose does not inject them as Authelia config env overrides.
@@ -80,15 +84,18 @@ OIDC_HMAC_SECRET="$(derive_long "${PG_PASS}" "authelia-oidc-hmac")"
 
 # OIDC / cookie material tracks the shared admin password.
 OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-nextcloud")"
-NEXUS_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-nexus")"
-NEXUS_OAUTH2_COOKIE_SECRET="$(derive_cookie "${ADMIN_PASS}" "nexus-oauth2-cookie")"
+# Client id is "mirror" so Authelia OIDC client and public host (mirror.*) stay stable.
+MIRROR_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-mirror")"
 MATTERMOST_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-mattermost")"
+NEXSPENCE_AUTH_JWT_SECRET="$(derive_long "${PG_PASS}" "nexspence-jwt")"
+# Nexspence OIDC cookie key: base64 of 32 raw bytes (required by Nexspence).
+NEXSPENCE_OIDC_COOKIE_KEY="$(derive_cookie "${ADMIN_PASS}" "nexspence-oidc-cookie" 32)"
 
 # One human admin everywhere.
 NEXTCLOUD_ADMIN_USER="${ADMIN_USER}"
 NEXTCLOUD_ADMIN_PASSWORD="${ADMIN_PASS}"
-NEXUS_ADMIN_USER="${ADMIN_USER}"
-NEXUS_ADMIN_PASSWORD="${ADMIN_PASS}"
+NEXSPENCE_ADMIN_USER="${ADMIN_USER}"
+NEXSPENCE_ADMIN_PASSWORD="${ADMIN_PASS}"
 
 umask 077
 cat >"${OUT_FILE}" <<EOF
@@ -98,6 +105,7 @@ cat >"${OUT_FILE}" <<EOF
 NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
 AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD}
 MATTERMOST_DB_PASSWORD=${MATTERMOST_DB_PASSWORD}
+NEXSPENCE_DB_PASSWORD=${NEXSPENCE_DB_PASSWORD}
 
 SESSION_SECRET=${SESSION_SECRET}
 STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
@@ -105,16 +113,18 @@ OIDC_HMAC_SECRET=${OIDC_HMAC_SECRET}
 
 OIDC_CLIENT_ID=nextcloud
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-NEXUS_OIDC_CLIENT_ID=nexus
-NEXUS_OIDC_CLIENT_SECRET=${NEXUS_OIDC_CLIENT_SECRET}
-NEXUS_OAUTH2_COOKIE_SECRET=${NEXUS_OAUTH2_COOKIE_SECRET}
+MIRROR_OIDC_CLIENT_ID=mirror
+MIRROR_OIDC_CLIENT_SECRET=${MIRROR_OIDC_CLIENT_SECRET}
 MATTERMOST_OIDC_CLIENT_ID=mattermost
 MATTERMOST_OIDC_CLIENT_SECRET=${MATTERMOST_OIDC_CLIENT_SECRET}
 
+NEXSPENCE_AUTH_JWT_SECRET=${NEXSPENCE_AUTH_JWT_SECRET}
+NEXSPENCE_OIDC_COOKIE_KEY=${NEXSPENCE_OIDC_COOKIE_KEY}
+
 NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
 NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
-NEXUS_ADMIN_USER=${NEXUS_ADMIN_USER}
-NEXUS_ADMIN_PASSWORD=${NEXUS_ADMIN_PASSWORD}
+NEXSPENCE_ADMIN_USER=${NEXSPENCE_ADMIN_USER}
+NEXSPENCE_ADMIN_PASSWORD=${NEXSPENCE_ADMIN_PASSWORD}
 EOF
 
 echo "sync-secrets: wrote ${OUT_FILE}"
