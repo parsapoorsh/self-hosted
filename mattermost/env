@@ -13,6 +13,8 @@ MM_GITLABSETTINGS_SCOPE=openid mattermost
 
 # Prefer SSO; keep email/username sign-in off after first boot is possible.
 MM_SERVICESETTINGS_ENABLESECURITYFIXALERT=false
+# Skip "Where would you like to view this?" (desktop app vs browser); open in browser.
+MM_SERVICESETTINGS_ENABLEDESKTOPLANDINGPAGE=false
 MM_TEAMSETTINGS_ENABLEOPENSERVER=true
 MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS=false
 MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION=false
