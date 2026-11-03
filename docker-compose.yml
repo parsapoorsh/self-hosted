@@ -65,6 +65,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # postgres/init on first empty volume (from .env.secrets)
       NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+      # AUTH_DB_* avoids AUTHELIA_* (Authelia treats those as config env overrides).
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      MATTERMOST_DB_PASSWORD: ${MATTERMOST_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -122,7 +125,8 @@ services:
     restart: unless-stopped
 
   authelia:
-    image: authelia/authelia:4.38.5
+    # 4.39+ for OIDC claims_policies (Mattermost username claim).
+    image: authelia/authelia:4.39.28
     entrypoint: ["/bin/sh", "/init/docker-entrypoint.sh"]
     env_file:
       - ./authelia/env
@@ -135,14 +139,21 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       NEXUS_OIDC_CLIENT_ID: ${NEXUS_OIDC_CLIENT_ID:-nexus}
       NEXUS_OIDC_CLIENT_SECRET: ${NEXUS_OIDC_CLIENT_SECRET}
+      MATTERMOST_OIDC_CLIENT_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
+      MATTERMOST_OIDC_CLIENT_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       STORAGE_ENCRYPTION_KEY: ${STORAGE_ENCRYPTION_KEY}
       OIDC_HMAC_SECRET: ${OIDC_HMAC_SECRET}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
       # Enables /app/healthcheck.sh
       X_AUTHELIA_HEALTHCHECK: "1"
     volumes:
       - ./authelia/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - ./authelia/configuration.yml.template:/init/configuration.yml.template:ro
       - authelia_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       self-hosted:
         aliases:
@@ -237,6 +248,39 @@ services:
       - self-hosted
     restart: unless-stopped
 
+  # Mattermost — Authelia via GitLab SSO settings (works on enterprise image without license)
+  mattermost:
+    image: mattermost/mattermost-enterprise-edition:10.11.8
+    env_file:
+      - ./mattermost/env
+    environment:
+      DOMAIN: ${DOMAIN:-example.com}
+      APP_SCHEME: ${APP_SCHEME:-https}
+      MM_SERVICESETTINGS_SITEURL: ${APP_SCHEME:-https}://mattermost.${DOMAIN:-example.com}
+      MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${MATTERMOST_DB_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_GITLABSETTINGS_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
+      MM_GITLABSETTINGS_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
+      # Browser hits public Authelia; token/userinfo stay on the docker network.
+      MM_GITLABSETTINGS_AUTHENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
+      MM_GITLABSETTINGS_TOKENENDPOINT: http://authelia:9091/api/oidc/token
+      MM_GITLABSETTINGS_USERAPIENDPOINT: http://authelia:9091/api/oidc/userinfo
+    volumes:
+      - mattermost_config:/mattermost/config
+      - mattermost_data:/mattermost/data
+      - mattermost_logs:/mattermost/logs
+      - mattermost_plugins:/mattermost/plugins
+      - mattermost_client_plugins:/mattermost/client/plugins
+      - mattermost_bleve:/mattermost/bleve-indexes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      authelia:
+        condition: service_healthy
+    networks:
+      - self-hosted
+    restart: unless-stopped
+    # Image is minimal (no /bin/sh or curl) — smoke-check probes /api/v4/system/ping.
+
 networks:
   self-hosted:
     name: self-hosted
@@ -247,3 +291,9 @@ volumes:
   nextcloud_html:
   nexus_data:
   authelia_data:
+  mattermost_config:
+  mattermost_data:
+  mattermost_logs:
+  mattermost_plugins:
+  mattermost_client_plugins:
+  mattermost_bleve:

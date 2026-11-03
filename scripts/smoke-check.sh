@@ -47,6 +47,19 @@ for i in $(seq 1 90); do
   sleep 5
 done
 
+echo "smoke: waiting for mattermost API..."
+for i in $(seq 1 60); do
+  MM_IP="$(container_ip mattermost || true)"
+  if [[ -n "${MM_IP}" ]]; then
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
+      "http://${MM_IP}:8065/api/v4/system/ping" 2>/dev/null || echo 000)"
+    if [[ "${code}" == "200" ]]; then
+      break
+    fi
+  fi
+  sleep 5
+done
+
 # Wait until bootstraps have applied (API truths beat log lines).
 echo "smoke: waiting for authelia OIDC + nexus catalog..."
 for i in $(seq 1 90); do
@@ -56,7 +69,10 @@ for i in $(seq 1 90); do
   if [[ -z "${AU_IP}" || -z "${NX_IP}" ]]; then
     ready=0
   else
+    # Authelia 4.39+ OIDC discovery needs X-Forwarded-Proto=https (portal is TLS-only).
     code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
+      -H "X-Forwarded-Proto: https" \
+      -H "X-Forwarded-Host: auth.localhost" \
       "http://${AU_IP}:9091/.well-known/openid-configuration" 2>/dev/null || echo 000)"
     if [[ "${code}" != "200" ]]; then
       ready=0
@@ -77,6 +93,8 @@ done
 AU_IP="$(container_ip authelia || true)"
 if [[ -n "${AU_IP}" ]]; then
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+    -H "X-Forwarded-Proto: https" \
+    -H "X-Forwarded-Host: auth.localhost" \
     "http://${AU_IP}:9091/.well-known/openid-configuration" || echo 000)"
   if [[ "${code}" == "200" ]]; then
     ok "authelia OIDC discovery"
@@ -192,6 +210,44 @@ if [[ "${loc}" == *"cloud.${DOMAIN}"* ]]; then
   bad "cloud.localhost redirects to ${loc} (overwritehost still set?)"
 else
   ok "cloud.localhost stays local (redir=${loc:-none})"
+fi
+
+MM_IP="$(container_ip mattermost || true)"
+if [[ -n "${MM_IP}" ]]; then
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+    "http://${MM_IP}:8065/api/v4/system/ping" || echo 000)"
+  if [[ "${code}" == "200" ]]; then
+    ok "mattermost ping"
+  else
+    bad "mattermost ping HTTP ${code}"
+  fi
+else
+  bad "mattermost container IP"
+fi
+
+code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
+  -H "Host: mattermost.localhost" \
+  "https://127.0.0.1/api/v4/system/ping" || echo 000)"
+if [[ "${code}" == "200" ]]; then
+  ok "edge mattermost.localhost ping"
+else
+  bad "edge mattermost.localhost ping HTTP ${code}"
+fi
+
+# GitLab SSO button should be enabled (Authelia). Config is public-ish via client config.
+mm_cfg="$(curl -sk --max-time 10 \
+  -H "Host: mattermost.localhost" \
+  "https://127.0.0.1/api/v4/config/client?format=old" 2>/dev/null || true)"
+if printf '%s' "${mm_cfg}" | grep -qiE 'EnableSignUpWithGitLab|gitlab'; then
+  ok "mattermost gitlab/SSO client config present"
+else
+  # Fallback: login page mentions GitLab / Authelia button path.
+  page="$(curl -sk --max-time 10 -H "Host: mattermost.localhost" "https://127.0.0.1/login" || true)"
+  if printf '%s' "${page}" | grep -qiE 'gitlab|authelia|/oauth/gitlab'; then
+    ok "mattermost login offers gitlab/SSO"
+  else
+    bad "mattermost SSO (gitlab) not advertised on client config or login"
+  fi
 fi
 
 if [[ "${fail}" -ne 0 ]]; then

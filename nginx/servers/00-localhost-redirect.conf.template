@@ -2,6 +2,7 @@
 server {
     listen 80;
     server_name localhost www.localhost
-                auth.localhost cloud.localhost nexus.localhost kiwix.localhost;
+                auth.localhost cloud.localhost nexus.localhost kiwix.localhost
+                mattermost.localhost;
     return 301 https://$host$request_uri;
 }

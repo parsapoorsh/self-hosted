@@ -88,12 +88,56 @@ case "${cmd}" in
     ;;
 esac
 
-"${COMPOSE[@]}" "$@"
-status=$?
+# App DBs are created by postgres/init only on a fresh volume. For an existing
+# postgres_data volume, create new app roles before services that need them start.
+ensure_app_dbs() {
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env.secrets"
+  set +a
 
-if [[ "${status}" -eq 0 && "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
-  echo "compose: running smoke-check (bootstraps can take a few minutes)..."
-  ./scripts/smoke-check.sh || status=$?
+  echo "compose: waiting for postgres..."
+  local i
+  for i in $(seq 1 60); do
+    if "${COMPOSE[@]}" exec -T postgres pg_isready -U postgres -d postgres >/dev/null 2>&1; then
+      break
+    fi
+    sleep 2
+  done
+  if ! "${COMPOSE[@]}" exec -T postgres pg_isready -U postgres -d postgres >/dev/null 2>&1; then
+    echo "compose: postgres not ready — skip app DB ensure" >&2
+    return 1
+  fi
+
+  if [[ -n "${AUTH_DB_PASSWORD:-}" ]]; then
+    ./scripts/pg-app-db.sh authelia authelia "${AUTH_DB_PASSWORD}"
+  fi
+  if [[ -n "${MATTERMOST_DB_PASSWORD:-}" ]]; then
+    ./scripts/pg-app-db.sh mattermost mattermost "${MATTERMOST_DB_PASSWORD}"
+  fi
+}
+
+status=0
+if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
+  # Bring postgres up first so Authelia/Mattermost DB roles exist before they start.
+  "${COMPOSE[@]}" up -d postgres
+  status=$?
+  if [[ "${status}" -eq 0 ]]; then
+    ensure_app_dbs || status=$?
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    "${COMPOSE[@]}" "$@"
+    status=$?
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    echo "compose: running smoke-check (bootstraps can take a few minutes)..."
+    ./scripts/smoke-check.sh || status=$?
+  fi
+else
+  "${COMPOSE[@]}" "$@"
+  status=$?
 fi
 
 exit "${status}"

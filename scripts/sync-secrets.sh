@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Derive internal service secrets into gitignored .env.secrets.
 # Human login uses KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD only
-# (shared Authelia / Nextcloud / Nexus admin; name kept for existing .env files).
+# (shared Authelia / Nextcloud / Mattermost / Nexus admin; name kept for existing .env files).
 # Usage: ./scripts/sync-secrets.sh
 #        ./scripts/compose.sh up -d   # runs this first
 set -euo pipefail
@@ -68,6 +68,9 @@ derive_cookie() {
 
 # DB role passwords track POSTGRES_PASSWORD (stable if admin password rotates).
 NEXTCLOUD_DB_PASSWORD="$(derive_pass "${PG_PASS}" "nextcloud-db")"
+# AUTH_DB_* name avoids Authelia treating AUTHELIA_* as config env overrides.
+AUTH_DB_PASSWORD="$(derive_pass "${PG_PASS}" "authelia-db")"
+MATTERMOST_DB_PASSWORD="$(derive_pass "${PG_PASS}" "mattermost-db")"
 
 # Authelia crypto material tracks POSTGRES_PASSWORD (stable across admin password changes).
 # Names avoid AUTHELIA_* so compose does not inject them as Authelia config env overrides.
@@ -79,6 +82,7 @@ OIDC_HMAC_SECRET="$(derive_long "${PG_PASS}" "authelia-oidc-hmac")"
 OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-nextcloud")"
 NEXUS_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-nexus")"
 NEXUS_OAUTH2_COOKIE_SECRET="$(derive_cookie "${ADMIN_PASS}" "nexus-oauth2-cookie")"
+MATTERMOST_OIDC_CLIENT_SECRET="$(derive_pass "${ADMIN_PASS}" "oidc-mattermost")"
 
 # One human admin everywhere.
 NEXTCLOUD_ADMIN_USER="${ADMIN_USER}"
@@ -92,6 +96,8 @@ cat >"${OUT_FILE}" <<EOF
 # Source seed: KEYCLOAK_ADMIN_PASSWORD + POSTGRES_PASSWORD from .env
 
 NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD}
+MATTERMOST_DB_PASSWORD=${MATTERMOST_DB_PASSWORD}
 
 SESSION_SECRET=${SESSION_SECRET}
 STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
@@ -102,6 +108,8 @@ OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
 NEXUS_OIDC_CLIENT_ID=nexus
 NEXUS_OIDC_CLIENT_SECRET=${NEXUS_OIDC_CLIENT_SECRET}
 NEXUS_OAUTH2_COOKIE_SECRET=${NEXUS_OAUTH2_COOKIE_SECRET}
+MATTERMOST_OIDC_CLIENT_ID=mattermost
+MATTERMOST_OIDC_CLIENT_SECRET=${MATTERMOST_OIDC_CLIENT_SECRET}
 
 NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
 NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}

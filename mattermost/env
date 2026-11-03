@@ -1,0 +1,19 @@
+# Mattermost constants (secrets and SiteURL from compose / .env.secrets).
+# Image runs as uid 2000; named volumes are chowned on first start by the entrypoint.
+TZ=UTC
+MM_SQLSETTINGS_DRIVERNAME=postgres
+MM_BLEVESETTINGS_INDEXDIR=/mattermost/bleve-indexes
+
+# GitLab SSO pointed at Authelia (see Authelia Mattermost OIDC docs).
+MM_GITLABSETTINGS_ENABLE=true
+MM_GITLABSETTINGS_BUTTONTEXT=Log in with Authelia
+MM_GITLABSETTINGS_BUTTONCOLOR=#000000
+# Scope "mattermost" carries the custom username claim Authelia defines.
+MM_GITLABSETTINGS_SCOPE=openid mattermost
+
+# Prefer SSO; keep email/username sign-in off after first boot is possible.
+MM_SERVICESETTINGS_ENABLESECURITYFIXALERT=false
+MM_TEAMSETTINGS_ENABLEOPENSERVER=true
+MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS=false
+MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION=false
+MM_EMAILSETTINGS_ENABLESMTPAUTH=false
