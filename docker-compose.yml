@@ -249,13 +249,13 @@ services:
       # auth.* resolves to nginx on the compose network (private IP). Mattermost
       # SSRF guard blocks that unless listed here.
       MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS: auth.${DOMAIN:-example.com} auth.localhost nginx
-      # Calls (WebRTC): media is UDP/TCP on CALLS_PORT (not via nginx). Docker
-      # IPs are unreachable to browsers, so advertise chat.$DOMAIN (same host
-      # clients already resolve for SiteURL). Optional CALLS_ICE_HOST_OVERRIDE
-      # only if you need a raw IP or public/private map instead.
+      # Calls (WebRTC): media is UDP/TCP on CALLS_PORT (not via nginx).
+      # ICE host must be a real host IP clients can reach - not chat.$DOMAIN when
+      # that resolves to 127.0.0.1 (breaks Docker UDP). compose.sh auto-detects
+      # the host primary IPv4 when CALLS_ICE_HOST_OVERRIDE is unset.
       MM_CALLS_UDP_SERVER_PORT: ${CALLS_PORT:-8443}
       MM_CALLS_TCP_SERVER_PORT: ${CALLS_PORT:-8443}
-      MM_CALLS_ICE_HOST_OVERRIDE: ${CALLS_ICE_HOST_OVERRIDE:-chat.${DOMAIN:-example.com}}
+      MM_CALLS_ICE_HOST_OVERRIDE: ${CALLS_ICE_HOST_OVERRIDE:?set CALLS_ICE_HOST_OVERRIDE or use ./scripts/compose.sh}
       MM_CALLS_ICE_HOST_PORT_OVERRIDE: ${CALLS_PORT:-8443}
     ports:
       # Media path bypasses the reverse proxy (UDP cannot be proxied by nginx).

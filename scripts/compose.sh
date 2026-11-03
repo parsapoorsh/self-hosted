@@ -64,6 +64,33 @@ ensure_static() {
 
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
+# Mattermost Calls ICE host: address clients dial for UDP/TCP media (CALLS_PORT).
+# chat.$DOMAIN often resolves to 127.0.0.1 in local DNS; that makes the plugin
+# bind loopback inside Docker and media fails (sendto: invalid argument).
+# Prefer an explicit CALLS_ICE_HOST_OVERRIDE; else the host's primary IPv4.
+ensure_calls_ice_host() {
+  # shellcheck disable=SC1091
+  set -a
+  source "${ROOT}/.env"
+  set +a
+
+  if [[ -n "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then
+    export CALLS_ICE_HOST_OVERRIDE
+    return 0
+  fi
+
+  local ip
+  ip="$(ip -4 route get 1.1.1.1 2>/dev/null \
+    | awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')"
+  if [[ -z "${ip}" || "${ip}" == 127.* ]]; then
+    echo "compose: could not detect host IPv4 for Mattermost Calls ICE" >&2
+    echo "compose: set CALLS_ICE_HOST_OVERRIDE in .env (LAN or public IP)" >&2
+    exit 1
+  fi
+  export CALLS_ICE_HOST_OVERRIDE="${ip}"
+  echo "compose: CALLS_ICE_HOST_OVERRIDE=${CALLS_ICE_HOST_OVERRIDE} (host IPv4)"
+}
+
 cmd=""
 detach=0
 for arg in "$@"; do
@@ -85,6 +112,7 @@ case "${cmd}" in
   up|start|restart)
     require_domain_cert
     ensure_static
+    ensure_calls_ice_host
     ;;
 esac
 
