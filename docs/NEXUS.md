@@ -43,6 +43,24 @@ poetry source add --priority=primary nexus https://nexus.${domain}/repository/py
 
 ## Docker
 
+Docker Hub via `registry-mirrors` (rewrites `docker pull nginx` and other Hub images):
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://nexus.${domain}/repository/docker"
+  ]
+}
+EOF
+sudo systemctl restart docker
+
+docker pull nginx:alpine
+```
+
+Explicit pull path (Hub, GHCR, k8s, Quay):
+
 ```bash
 docker pull nexus.${domain}/repository/docker/library/nginx:alpine
 docker pull nexus.${domain}/repository/ghcr/OWNER/IMAGE:TAG
@@ -52,7 +70,7 @@ docker pull nexus.${domain}/repository/quay/prometheus/prometheus:latest
 
 | Registry | Pull prefix |
 |----------|-------------|
-| Docker Hub | `nexus.${domain}/repository/docker/…` |
+| Docker Hub | `nexus.${domain}/repository/docker/…` (or `registry-mirrors` above) |
 | GHCR | `nexus.${domain}/repository/ghcr/…` |
 | Kubernetes | `nexus.${domain}/repository/k8s/…` |
 | Quay | `nexus.${domain}/repository/quay/…` |
