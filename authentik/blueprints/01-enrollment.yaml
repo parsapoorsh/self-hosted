@@ -134,9 +134,12 @@ entries:
       order: 100
     model: authentik_flows.flowstagebinding
 
-  # Show "Sign up" on the login page.
+  # Show "Sign up" on the login page (must keep user_fields or validation fails).
   - model: authentik_stages_identification.identificationstage
     identifiers:
       name: default-authentication-identification
     attrs:
+      user_fields:
+        - username
+        - email
       enrollment_flow: !Find [authentik_flows.flow, [slug, default-enrollment-flow]]
