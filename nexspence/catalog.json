@@ -14,6 +14,9 @@
   ],
   "proxies": {
     "apt": {
+      "debian": "https://mirror.arvancloud.ir/debian",
+      "debian-security": "https://mirror.arvancloud.ir/debian-security",
+      "ubuntu": "https://ir.archive.ubuntu.com/ubuntu/",
       "debian-cdnir": "https://mirror.cdn.ir/repository/debian/",
       "debian-arvancloud": "https://mirror.arvancloud.ir/debian",
       "debian-iranserver": "https://mirror.iranserver.com/debian/",
@@ -162,55 +165,6 @@
     ]
   },
   "groups": {
-    "apt": {
-      "debian": [
-        "debian-cdnir",
-        "debian-arvancloud",
-        "debian-iranserver",
-        "debian-chabokan",
-        "debian-kargadan",
-        "debian-runflare",
-        "debian-liara",
-        "debian-afranet",
-        "debian-abrha",
-        "debian-iut",
-        "debian-sindad",
-        "debian-famaserver",
-        "debian-fastly",
-        "debian-backports-sindad"
-      ],
-      "debian-security": [
-        "debian-security-cdnir",
-        "debian-security-arvancloud",
-        "debian-security-iranserver",
-        "debian-security-liara",
-        "debian-security-abrha",
-        "debian-security-sindad",
-        "debian-security-upstream"
-      ],
-      "ubuntu": [
-        "ubuntu-cdnir",
-        "ubuntu-arvancloud",
-        "ubuntu-mobinhost",
-        "ubuntu-pishgaman",
-        "ubuntu-sindad",
-        "ubuntu-archive-ir",
-        "ubuntu-iranserver",
-        "ubuntu-chabokan",
-        "ubuntu-kargadan",
-        "ubuntu-runflare",
-        "ubuntu-liara",
-        "ubuntu-afranet",
-        "ubuntu-famaserver",
-        "ubuntu-rasanegar",
-        "ubuntu-linuxmirrors",
-        "ubuntu-pardisco",
-        "ubuntu-parshost",
-        "ubuntu-abrha",
-        "ubuntu-iut",
-        "ubuntu-upstream"
-      ]
-    },
     "alpine": {
       "alpine": [
         "alpine-arvancloud",

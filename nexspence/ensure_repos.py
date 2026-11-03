@@ -118,24 +118,38 @@ class Api:
                 return exc.code, payload
         return last_code, last_payload
 
-    def exists_typed(self, fmt: str, typ: str, name: str) -> bool:
+    def get_repo(self, name: str) -> dict[str, Any] | None:
         # Nexspence serves GET by name only (typed GET falls through to the SPA).
         code, payload = self.request(
             "GET",
             f"/service/rest/v1/repositories/{name}",
         )
         if code != 200 or not isinstance(payload, dict):
-            return False
+            return None
         if payload.get("name") != name:
+            return None
+        return payload
+
+    def exists_typed(self, fmt: str, typ: str, name: str) -> bool:
+        payload = self.get_repo(name)
+        if payload is None:
             return False
         if fmt and payload.get("format") not in (None, fmt):
-            # docker group members may be docker format under another type.
             if not (fmt == "docker" and payload.get("format") == "docker"):
                 if payload.get("format") != fmt:
                     return False
-        if typ and payload.get("type") not in (None, typ, "hosted", "proxy", "group"):
-            pass
+        if typ and payload.get("type") not in (None, typ):
+            return False
         return True
+
+    def delete_repo(self, name: str) -> None:
+        code, payload = self.request(
+            "DELETE",
+            f"/service/rest/v1/repositories/{name}",
+        )
+        if code not in (200, 204, 404):
+            raise RuntimeError(f"delete repo {name} HTTP {code}: {payload}")
+        log(f"deleted repo {name}")
 
     def repo_names(self) -> set[str]:
         code, rows = self.request("GET", "/service/rest/v1/repositories")
@@ -303,17 +317,29 @@ def ensure_typed_repos(
         fmt = entry["format"]
         body = payload_fn(entry)
 
-        if api.exists_typed(fmt, typ, name):
-            code, payload = api.request(
-                "PUT",
-                f"/service/rest/v1/repositories/{fmt}/{typ}/{name}",
-                body,
+        existing = api.get_repo(name)
+        if existing is not None:
+            same_fmt = existing.get("format") in (None, fmt) or (
+                fmt == "docker" and existing.get("format") == "docker"
             )
-            if code in (200, 204):
-                log(f"{typ} updated {name}")
-            else:
-                log(f"{typ} update skipped {name} HTTP {code}: {payload}")
-            continue
+            same_typ = existing.get("type") in (None, typ)
+            if same_fmt and same_typ:
+                code, payload = api.request(
+                    "PUT",
+                    f"/service/rest/v1/repositories/{fmt}/{typ}/{name}",
+                    body,
+                )
+                if code in (200, 204):
+                    log(f"{typ} updated {name}")
+                else:
+                    log(f"{typ} update skipped {name} HTTP {code}: {payload}")
+                continue
+            # Name reused with a different type/format (e.g. apt group → proxy).
+            log(
+                f"recreate {name}: was format={existing.get('format')} "
+                f"type={existing.get('type')}, want {fmt}/{typ}"
+            )
+            api.delete_repo(name)
 
         code, payload = api.request(
             "POST",

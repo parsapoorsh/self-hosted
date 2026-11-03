@@ -128,7 +128,12 @@ apk update
 
 ## APT (Debian / Ubuntu)
 
-We publish **main** and **security** as separate archive roots.
+We publish **main** and **security** as separate archive roots. These paths are
+**APT proxies** (pass-through of upstream signed `InRelease`). Nexspence APT
+groups synthesize their own unsigned index, which breaks `apt update`
+(`Clearsigned file isn't valid, got 'NOSPLIT'`), so public names are single
+proxies. Alternate regional proxies stay available under their own names
+(e.g. `debian-fastly`, `debian-security-upstream`, `ubuntu-arvancloud`).
 
 **Debian** (replace `bookworm` with your suite):
 
@@ -143,7 +148,7 @@ sudo apt-get update
 ```
 
 **Ubuntu** (replace `noble` with your suite). Ubuntu puts security under the
-same archive root as main, so one group is enough:
+same archive root as main, so one proxy is enough:
 
 ```bash
 sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
