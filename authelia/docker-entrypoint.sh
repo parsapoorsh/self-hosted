@@ -9,6 +9,8 @@ TEMPLATE="${AUTHELIA_TEMPLATE:-/init/configuration.yml.template}"
 mkdir -p "${DATA}" "${RUNTIME}"
 
 DOMAIN="${DOMAIN:-example.com}"
+HTTP_PORT="${HTTP_PORT:-80}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
 # Prefer AUTH_*; fall back to KEYCLOAK_* for existing .env files.
 ADMIN_USER="${AUTH_ADMIN:-}"
 if [ -z "${ADMIN_USER}" ]; then
@@ -61,6 +63,23 @@ case "${DOMAIN}" in
     die "invalid DOMAIN: ${DOMAIN}"
     ;;
 esac
+
+case "${HTTP_PORT}" in
+  *[!0-9]* | "" ) die "invalid HTTP_PORT: ${HTTP_PORT}" ;;
+esac
+case "${HTTPS_PORT}" in
+  *[!0-9]* | "" ) die "invalid HTTPS_PORT: ${HTTPS_PORT}" ;;
+esac
+
+# Empty for defaults so public URLs omit :80 / :443.
+HTTP_PORT_SUFFIX=""
+HTTPS_PORT_SUFFIX=""
+if [ "${HTTP_PORT}" != "80" ]; then
+  HTTP_PORT_SUFFIX=":${HTTP_PORT}"
+fi
+if [ "${HTTPS_PORT}" != "443" ]; then
+  HTTPS_PORT_SUFFIX=":${HTTPS_PORT}"
+fi
 
 yaml_sq() {
   # Single-quoted YAML scalar; double any embedded single quotes.
@@ -157,6 +176,10 @@ render_config() {
   cp "${TEMPLATE}" "${out}"
 
   subst_one "${out}" '__DOMAIN__' "${DOMAIN}"
+  # Port suffixes before other placeholders that may contain colons is fine;
+  # empty suffix leaves https://host/... unchanged for default 443/80.
+  subst_one "${out}" '__HTTPS_PORT_SUFFIX__' "${HTTPS_PORT_SUFFIX}"
+  subst_one "${out}" '__HTTP_PORT_SUFFIX__' "${HTTP_PORT_SUFFIX}"
   subst_one "${out}" '__SESSION_SECRET__' "${SESSION_SECRET}"
   subst_one "${out}" '__STORAGE_ENCRYPTION_KEY__' "${STORAGE_KEY}"
   subst_one "${out}" '__OIDC_HMAC_SECRET__' "${HMAC_SECRET}"
@@ -177,7 +200,7 @@ render_config() {
   fi
 }
 
-log "building config for domain=${DOMAIN} admin=${ADMIN_USER}"
+log "building config for domain=${DOMAIN} admin=${ADMIN_USER} http=${HTTP_PORT} https=${HTTPS_PORT}"
 ensure_jwks
 write_users_db
 render_config

@@ -52,13 +52,13 @@ session:
     # Cookie domain is the IdP host (OIDC only; not forward-auth on other apps).
     - name: authelia_session
       domain: 'auth.__DOMAIN__'
-      authelia_url: 'https://auth.__DOMAIN__'
-      default_redirection_url: 'https://auth.__DOMAIN__/'
+      authelia_url: 'https://auth.__DOMAIN____HTTPS_PORT_SUFFIX__'
+      default_redirection_url: 'https://auth.__DOMAIN____HTTPS_PORT_SUFFIX__/'
       same_site: lax
     - name: authelia_session
       domain: 'auth.localhost'
-      authelia_url: 'https://auth.localhost'
-      default_redirection_url: 'https://auth.localhost/'
+      authelia_url: 'https://auth.localhost__HTTPS_PORT_SUFFIX__'
+      default_redirection_url: 'https://auth.localhost__HTTPS_PORT_SUFFIX__/'
       same_site: lax
 
 regulation:
@@ -140,12 +140,12 @@ __JWKS_PEM__
         require_pkce: false
         pkce_challenge_method: 'S256'
         redirect_uris:
-          - 'https://cloud.__DOMAIN__/apps/user_oidc/code'
-          - 'http://cloud.__DOMAIN__/apps/user_oidc/code'
-          - 'https://cloud.localhost/apps/user_oidc/code'
-          - 'https://cloud.__DOMAIN__/index.php/apps/user_oidc/code'
-          - 'http://cloud.__DOMAIN__/index.php/apps/user_oidc/code'
-          - 'https://cloud.localhost/index.php/apps/user_oidc/code'
+          - 'https://cloud.__DOMAIN____HTTPS_PORT_SUFFIX__/apps/user_oidc/code'
+          - 'http://cloud.__DOMAIN____HTTP_PORT_SUFFIX__/apps/user_oidc/code'
+          - 'https://cloud.localhost__HTTPS_PORT_SUFFIX__/apps/user_oidc/code'
+          - 'https://cloud.__DOMAIN____HTTPS_PORT_SUFFIX__/index.php/apps/user_oidc/code'
+          - 'http://cloud.__DOMAIN____HTTP_PORT_SUFFIX__/index.php/apps/user_oidc/code'
+          - 'https://cloud.localhost__HTTPS_PORT_SUFFIX__/index.php/apps/user_oidc/code'
         scopes:
           - openid
           - profile
@@ -169,9 +169,9 @@ __JWKS_PEM__
         require_pkce: true
         pkce_challenge_method: 'S256'
         redirect_uris:
-          - 'https://mirror.__DOMAIN__/api/v1/auth/oidc/callback'
-          - 'http://mirror.__DOMAIN__/api/v1/auth/oidc/callback'
-          - 'https://mirror.localhost/api/v1/auth/oidc/callback'
+          - 'https://mirror.__DOMAIN____HTTPS_PORT_SUFFIX__/api/v1/auth/oidc/callback'
+          - 'http://mirror.__DOMAIN____HTTP_PORT_SUFFIX__/api/v1/auth/oidc/callback'
+          - 'https://mirror.localhost__HTTPS_PORT_SUFFIX__/api/v1/auth/oidc/callback'
         scopes:
           - openid
           - profile
@@ -193,12 +193,12 @@ __JWKS_PEM__
         claims_policy: 'mattermost'
         require_pkce: false
         redirect_uris:
-          - 'https://chat.__DOMAIN__/signup/gitlab/complete'
-          - 'http://chat.__DOMAIN__/signup/gitlab/complete'
-          - 'https://chat.localhost/signup/gitlab/complete'
-          - 'https://chat.__DOMAIN__/login/gitlab/complete'
-          - 'http://chat.__DOMAIN__/login/gitlab/complete'
-          - 'https://chat.localhost/login/gitlab/complete'
+          - 'https://chat.__DOMAIN____HTTPS_PORT_SUFFIX__/signup/gitlab/complete'
+          - 'http://chat.__DOMAIN____HTTP_PORT_SUFFIX__/signup/gitlab/complete'
+          - 'https://chat.localhost__HTTPS_PORT_SUFFIX__/signup/gitlab/complete'
+          - 'https://chat.__DOMAIN____HTTPS_PORT_SUFFIX__/login/gitlab/complete'
+          - 'http://chat.__DOMAIN____HTTP_PORT_SUFFIX__/login/gitlab/complete'
+          - 'https://chat.localhost__HTTPS_PORT_SUFFIX__/login/gitlab/complete'
         # openid only + mattermost (no profile/email scopes - those force
         # preferred_username=admin and email=admin@... via Authelia defaults).
         scopes:
