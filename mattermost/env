@@ -33,3 +33,7 @@ MM_SERVICESETTINGS_ENABLEONBOARDINGFLOW=false
 MM_SERVICESETTINGS_ENABLETUTORIAL=false
 # Skip "Where would you like to view this?" (desktop app vs browser); open in browser.
 MM_SERVICESETTINGS_ENABLEDESKTOPLANDINGPAGE=false
+# No GIPHY picker in the emoji/GIF UI.
+MM_SERVICESETTINGS_ENABLEGIFPICKER=false
+# Hide "Preview Mode: Email notifications have not been configured."
+MM_EMAILSETTINGS_ENABLEPREVIEWMODEBANNER=false
