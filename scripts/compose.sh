@@ -22,6 +22,23 @@ ensure_nexus_alpine_key() {
 }
 ensure_nexus_alpine_key
 
+# Primary domain TLS material (nginx fails hard without it).
+require_domain_cert() {
+  local domain="${DOMAIN:-}"
+  if [[ -z "${domain}" && -f .env ]]; then
+    # shellcheck disable=SC1091
+    domain="$(set -a; source .env; set +a; printf '%s' "${DOMAIN:-}")"
+  fi
+  domain="${domain:-example.com}"
+  local dir="${ROOT}/cert/${domain}"
+  if [[ -f "${dir}/fullchain.pem" && -f "${dir}/privkey.pem" ]]; then
+    return 0
+  fi
+  echo "compose: missing cert/${domain}/{fullchain,privkey}.pem" >&2
+  echo "compose: run ./scripts/self-signed.sh  (or place real LE certs there)" >&2
+  exit 1
+}
+
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 cmd=""
@@ -38,6 +55,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Fail before docker starts so nginx does not crash-loop on missing DOMAIN cert.
+case "${cmd}" in
+  up|start|restart) require_domain_cert ;;
+esac
 
 "${COMPOSE[@]}" "$@"
 status=$?
