@@ -16,10 +16,16 @@ services:
       - ./cert:/etc/nginx/certs
       - nextcloud_html:/var/www/nextcloud:ro
     entrypoint: ["/bin/sh", "/etc/nginx/self-hosted/docker-entrypoint.sh"]
+    # auth.* aliases live on nginx (TLS edge) so containers can call
+    # https://auth.$DOMAIN for OIDC token/userinfo with correct X-Forwarded-*.
     networks:
-      - self-hosted
+      self-hosted:
+        aliases:
+          - auth.${DOMAIN:-example.com}
+          - auth.localhost
     depends_on:
       - anubis
+      - authelia
     restart: unless-stopped
 
   anubis:
@@ -155,10 +161,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      self-hosted:
-        aliases:
-          - auth.${DOMAIN:-example.com}
-          - auth.localhost
+      - self-hosted
     mem_limit: 256m
     restart: unless-stopped
     healthcheck:
@@ -218,12 +221,13 @@ services:
       OAUTH2_PROXY_COOKIE_SECURE: "${NEXUS_OAUTH2_COOKIE_SECURE:-true}"
       OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "${NEXUS_OAUTH2_SSL_INSECURE_SKIP_VERIFY:-true}"
       # Issuer is always https (Authelia session cookies require TLS).
+      # Token/JWKS/userinfo via nginx TLS edge (Authelia 4.39+ needs X-Forwarded-Proto=https).
       OAUTH2_PROXY_OIDC_ISSUER_URL: https://auth.${DOMAIN:-example.com}
       OAUTH2_PROXY_LOGIN_URL: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
       OAUTH2_PROXY_REDIRECT_URL: ${APP_SCHEME:-http}://nexus.${DOMAIN:-example.com}/oauth2/callback
-      OAUTH2_PROXY_REDEEM_URL: http://authelia:9091/api/oidc/token
-      OAUTH2_PROXY_OIDC_JWKS_URL: http://authelia:9091/jwks.json
-      OAUTH2_PROXY_PROFILE_URL: http://authelia:9091/api/oidc/userinfo
+      OAUTH2_PROXY_REDEEM_URL: https://auth.${DOMAIN:-example.com}/api/oidc/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: https://auth.${DOMAIN:-example.com}/jwks.json
+      OAUTH2_PROXY_PROFILE_URL: https://auth.${DOMAIN:-example.com}/api/oidc/userinfo
       OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DOMAIN:-example.com},${DOMAIN:-example.com}"
     depends_on:
       authelia:
@@ -260,10 +264,11 @@ services:
       MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${MATTERMOST_DB_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
       MM_GITLABSETTINGS_ID: ${MATTERMOST_OIDC_CLIENT_ID:-mattermost}
       MM_GITLABSETTINGS_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
-      # Browser hits public Authelia; token/userinfo stay on the docker network.
+      # All OIDC endpoints via nginx TLS edge. Authelia 4.39+ rejects bare
+      # http://authelia token calls (needs X-Forwarded-Proto=https for issuer).
       MM_GITLABSETTINGS_AUTHENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/authorization
-      MM_GITLABSETTINGS_TOKENENDPOINT: http://authelia:9091/api/oidc/token
-      MM_GITLABSETTINGS_USERAPIENDPOINT: http://authelia:9091/api/oidc/userinfo
+      MM_GITLABSETTINGS_TOKENENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/token
+      MM_GITLABSETTINGS_USERAPIENDPOINT: https://auth.${DOMAIN:-example.com}/api/oidc/userinfo
     volumes:
       - mattermost_config:/mattermost/config
       - mattermost_data:/mattermost/data

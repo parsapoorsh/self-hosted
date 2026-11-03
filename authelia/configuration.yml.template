@@ -86,7 +86,8 @@ __JWKS_PEM__
         - introspection
         - userinfo
       allowed_origins_from_client_redirect_uris: true
-    # Mattermost GitLab SSO expects a top-level "username" claim.
+    # Mattermost GitLab SSO userinfo expects GitLab-shaped claims:
+    # username, email, name (not only preferred_username).
     claims_policies:
       mattermost:
         custom_claims:
@@ -97,6 +98,10 @@ __JWKS_PEM__
       mattermost:
         claims:
           - 'username'
+          - 'email'
+          - 'email_verified'
+          - 'name'
+          - 'preferred_username'
     clients:
       - client_id: '__OIDC_CLIENT_ID__'
         client_name: 'Nextcloud'
@@ -167,6 +172,8 @@ __JWKS_PEM__
           - 'https://mattermost.localhost/login/gitlab/complete'
         scopes:
           - openid
+          - profile
+          - email
           - mattermost
         response_types:
           - code

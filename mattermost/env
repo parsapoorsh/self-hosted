@@ -8,8 +8,8 @@ MM_BLEVESETTINGS_INDEXDIR=/mattermost/bleve-indexes
 MM_GITLABSETTINGS_ENABLE=true
 MM_GITLABSETTINGS_BUTTONTEXT=Log in with Authelia
 MM_GITLABSETTINGS_BUTTONCOLOR=#000000
-# Scope "mattermost" carries the custom username claim Authelia defines.
-MM_GITLABSETTINGS_SCOPE=openid mattermost
+# openid/profile/email + mattermost (custom username claim for GitLab-shaped userinfo).
+MM_GITLABSETTINGS_SCOPE=openid profile email mattermost
 
 # Prefer SSO; keep email/username sign-in off after first boot is possible.
 MM_SERVICESETTINGS_ENABLESECURITYFIXALERT=false
