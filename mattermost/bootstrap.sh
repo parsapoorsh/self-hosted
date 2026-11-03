@@ -144,13 +144,13 @@ ensure_calls_enabled() {
   printf '%s\n' \
     '{"PluginSettings":{"Plugins":{"com.mattermost.calls":{"defaultenabled":true}}}}' \
     >"${patch}"
-  # Config volume is uid 2000; root-owned docker cp files are unreadable to mmctl.
+  chmod 644 "${patch}"
+  # Write into config volume as mattermost uid so mmctl can read the file.
   docker run --rm \
-    -u 2000:2000 \
     -v self-hosted_mattermost_config:/c \
     -v "${patch}:/patch.json:ro" \
     alpine \
-    cp /patch.json /c/mm-calls-enabled.json
+    sh -c 'cp /patch.json /c/mm-calls-enabled.json && chown 2000:2000 /c/mm-calls-enabled.json'
   rm -f "${patch}"
   if ! mmctl config patch /mattermost/config/mm-calls-enabled.json >/dev/null; then
     log "warn: could not patch Calls DefaultEnabled"
