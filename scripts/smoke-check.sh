@@ -223,24 +223,30 @@ else
   bad "mattermost container IP"
 fi
 
-# Nextcloud: login page must expose Authentik as alternative OIDC login.
-code="$(curl -sk -o /tmp/nc-login-smoke.html -w '%{http_code}' --max-time 15 \
-  -H "Host: cloud.localhost${HTTPS_HOST_SUFFIX}" "${EDGE_HTTPS}/login" || echo 000)"
-if [[ "${code}" == "200" ]]; then
-  alts="$(python3 - <<'PY'
-import base64, json, re, sys
-html = open("/tmp/nc-login-smoke.html").read()
-m = re.search(r'id="initial-state-core-countAlternativeLogins" value="([^"]+)"', html)
-print(base64.b64decode(m.group(1)).decode() if m else "0")
-PY
-)"
-  if [[ "${alts}" != "0" && "${alts}" != "" ]]; then
-    ok "nextcloud OIDC alternative logins count=${alts}"
-  else
-    bad "nextcloud OIDC alternative logins count=${alts} (Authentik button missing)"
-  fi
+# Nextcloud is OIDC-only: /login 302s to user_oidc (then Authentik).
+# Use Sec-Fetch headers so user_oidc treats this as a top-level navigation.
+code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 \
+  -H "Host: cloud.localhost${HTTPS_HOST_SUFFIX}" \
+  -H "Accept: text/html" \
+  -H "Sec-Fetch-Mode: navigate" \
+  -H "Sec-Fetch-Dest: document" \
+  -H "Sec-Fetch-User: ?1" \
+  -H "Sec-Fetch-Site: none" \
+  "${EDGE_HTTPS}/login" || echo 000)"
+loc="$(curl -sk -o /dev/null -w '%{redirect_url}' --max-time 15 \
+  -H "Host: cloud.localhost${HTTPS_HOST_SUFFIX}" \
+  -H "Accept: text/html" \
+  -H "Sec-Fetch-Mode: navigate" \
+  -H "Sec-Fetch-Dest: document" \
+  -H "Sec-Fetch-User: ?1" \
+  -H "Sec-Fetch-Site: none" \
+  "${EDGE_HTTPS}/login" || true)"
+if [[ "${code}" == "302" && "${loc}" == *"/apps/user_oidc/login/"* ]]; then
+  ok "nextcloud OIDC-only /login -> ${loc}"
+elif [[ "${code}" == "302" ]]; then
+  ok "nextcloud /login redirect HTTP 302 -> ${loc}"
 else
-  bad "nextcloud login page HTTP ${code}"
+  bad "nextcloud /login HTTP ${code} loc=${loc} (want 302 to user_oidc)"
 fi
 
 if [[ "${fail}" -ne 0 ]]; then
