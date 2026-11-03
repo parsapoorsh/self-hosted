@@ -1,4 +1,4 @@
-# Kiwix defaults (override from root .env if needed).
+# Kiwix service constants (internal listen; edge is library.* via nginx).
 KIWIX_PORT=9393
 # KIWIX_HOST=
 # KIWIX_THREADS=

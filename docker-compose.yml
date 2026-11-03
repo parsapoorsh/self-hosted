@@ -52,10 +52,6 @@ services:
     image: self-hosted-kiwix:local
     env_file:
       - ./kiwix/env
-    environment:
-      KIWIX_PORT: ${KIWIX_PORT:-9393}
-      KIWIX_HOST: ${KIWIX_HOST:-}
-      KIWIX_THREADS: ${KIWIX_THREADS:-}
     volumes:
       - ./kiwix/files:/zim:ro
     networks:
