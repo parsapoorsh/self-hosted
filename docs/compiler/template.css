@@ -1,0 +1,324 @@
+/* Light defaults. Dark via #theme-toggle (no JS) or compile --dark (starts checked). */
+:root{
+  --bg:#ffffff;
+  --fg:#000000;
+  --link:#06c;
+  --muted:#888;
+  --border:#ccc;
+  --border-soft:#e2e2e2;
+  --border-faint:#ddd;
+  --chip-bg:#e8e8e8;
+  --pre-bg:#f0f0f0;
+  --table-head-bg:#f0f0f0;
+  --toc-bg:#fafafa;
+  --toc-accent:#888;
+  --admonition-bg:#f7f7f7;
+  --admonition-border:#888;
+  --note-bg:#f0faf3;
+  --note-border:#3a7;
+  --warning-bg:#fff8e8;
+  --warning-border:#c80;
+  --danger-bg:#fff0f0;
+  --danger-border:#c33;
+  --tip-bg:#f0f5ff;
+  --tip-border:#36a;
+  /* 100% image width. em so figures track font zoom with the type. */
+  --measure:40em;
+}
+/* Checked checkbox flips the whole page (CSS :has, no JavaScript). */
+body:has(#theme-toggle:checked){
+  --bg:#121212;
+  --fg:#e8e8e8;
+  --link:#6af;
+  --muted:#aaa;
+  --border:#444;
+  --border-soft:#333;
+  --border-faint:#3a3a3a;
+  --chip-bg:#2a2a2a;
+  --pre-bg:#1c1c1c;
+  --table-head-bg:#1c1c1c;
+  --toc-bg:#1a1a1a;
+  --toc-accent:#888;
+  --admonition-bg:#1a1a1a;
+  --admonition-border:#666;
+  --note-bg:#142018;
+  --note-border:#4a8;
+  --warning-bg:#2a2410;
+  --warning-border:#da0;
+  --danger-bg:#2a1414;
+  --danger-border:#e55;
+  --tip-bg:#141a28;
+  --tip-border:#48a;
+  color-scheme:dark;
+}
+html{overflow-y:scroll}
+body{
+  font-family:"Noto Sans","Droid Sans","DejaVu Sans","Arial",sans-serif;
+  line-height:1.6;
+  background:var(--bg);
+  color:var(--fg);
+}
+a{color:var(--link)}
+/* Visually hide the real checkbox; the label is the control.
+   position:fixed keeps it in the viewport so activating the label
+   does not scroll the page to the document-top absolute box. */
+.theme-toggle{
+  position:fixed;
+  top:0;
+  left:0;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+  opacity:0;
+  pointer-events:none;
+}
+/* Equal inset from top and right of the viewport. */
+.theme-btn{
+  position:fixed;
+  top:0.75em;
+  right:0.75em;
+  z-index:1;
+  margin:0;
+  padding:0.25em 0.7em;
+  font-size:0.85em;
+  line-height:1.3;
+  cursor:pointer;
+  user-select:none;
+  border:1px solid #333;
+  border-radius:3px;
+  /* "Dark" control: dark chip on a light page. */
+  background:#1c1c1c;
+  color:#e8e8e8;
+}
+.theme-btn::before{content:"Dark"}
+body:has(#theme-toggle:checked) .theme-btn{
+  /* "Light" control: light chip on a dark page. */
+  border-color:#ccc;
+  background:#f0f0f0;
+  color:#111;
+}
+body:has(#theme-toggle:checked) .theme-btn::before{content:"Light"}
+.theme-btn:hover{filter:brightness(1.2)}
+body:has(#theme-toggle:checked) .theme-btn:hover{filter:brightness(0.95)}
+.theme-btn:focus-visible{
+  outline:2px solid var(--link);
+  outline-offset:2px;
+}
+tt,code{
+  font-family:Consolas,Monaco,"Noto Sans Mono","DejaVu Sans Mono",monospace,sans-serif;
+  font-size:0.92em;
+  background:var(--chip-bg);
+  padding:0.15em 0.4em;
+  border-radius:3px;
+  /* Keep the chip on the text line; center glyph box in the padding. */
+  display:inline-block;
+  vertical-align:middle;
+  line-height:1.25;
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
+}
+h1{font-size:1.5em}
+h2{font-size:1.3em}
+h3{font-size:1.0em}
+h1 a{text-decoration:none}
+table a{text-decoration:none}
+.nav summary{font-size:0.8em}
+.nav table tr{font-size:0.8em}
+.subtitle{font-weight:normal}
+.invisible{display:none}
+/* <md-name> blocks: custom elements need an explicit display. */
+md-center,md-subtitle,md-invisible,md-left,md-right{
+  display:block;
+}
+md-center{text-align:center}
+md-center img{
+  /* Block + auto sides so width=% images stay centered. */
+  display:block;
+  margin-left:auto;
+  margin-right:auto;
+}
+md-subtitle{font-weight:normal}
+md-invisible{display:none}
+/* First child floats; rest wraps. flow-root contains the float. */
+md-left,md-right{
+  display:flow-root;
+  margin:0.5em 0;
+}
+md-left > :first-child{
+  float:left;
+  max-width:100%;
+  margin:0 0.5em 0.5em 0;
+  padding-right:0.5em;
+}
+md-right > :first-child{
+  float:right;
+  max-width:100%;
+  margin:0 0 0.5em 0.5em;
+  padding-left:0.5em;
+}
+md-left > :first-child img,
+md-right > :first-child img{
+  display:block;
+  height:auto;
+}
+/*
+  md-left/right inside md-center: shrink-wrap the pair and center it.
+  Float + full-width flow-root cannot do that (block text forces 100% width).
+  inline-flex keeps image beside text; parent text-align:center places the unit.
+*/
+md-center > md-left,
+md-center > md-right{
+  display:inline-flex;
+  align-items:center;
+  gap:0.75em;
+  max-width:100%;
+  margin:0.5em 0;
+  text-align:left;
+  vertical-align:middle;
+}
+md-center > md-right{
+  flex-direction:row-reverse;
+}
+md-center > md-left > :first-child,
+md-center > md-right > :first-child{
+  float:none;
+  margin:0;
+  padding:0;
+  flex:0 0 auto;
+}
+md-center > md-left > p,
+md-center > md-right > p{
+  margin:0;
+}
+md-center md-left img,
+md-center md-right img{
+  /* Undo md-center img auto sides so the float/flex box owns placement. */
+  margin-left:0;
+  margin-right:0;
+}
+/*
+  Outside markers paint in the float gutter (over the image).
+  Inside keeps the bullet with the wrapped text line.
+*/
+md-left ul,md-left ol,
+md-right ul,md-right ol{
+  list-style-position:inside;
+  padding-left:0;
+  margin-left:0;
+}
+/* Shrink-wrap the list and center it so bullets stay with the text. */
+md-center ul,md-center ol{
+  display:table;
+  margin-left:auto;
+  margin-right:auto;
+  text-align:left;
+  list-style-position:outside;
+  padding-left:1.2em;
+}
+img{max-width:100%;height:auto}
+pre{
+  /* Block so consecutive fences stack; fit-content so width hugs the text. */
+  display:block;
+  width:fit-content;
+  max-width:100%;
+  box-sizing:border-box;
+  overflow-x:auto;
+  background:var(--pre-bg);
+  padding:0.6em 0.8em;
+  margin:0.6em 0;
+  white-space:pre;
+}
+pre tt,pre code{
+  display:inline;
+  vertical-align:baseline;
+  font-size:1em;
+  background:transparent;
+  color:inherit;
+  padding:0;
+  border-radius:0;
+  line-height:inherit;
+}
+blockquote{margin-left:1em;border-left:3px solid var(--border);padding-left:0.8em}
+table{border-collapse:collapse;margin:0.8em 0}
+th,td{border:1px solid var(--border);padding:0.25em 0.6em;text-align:left;vertical-align:top}
+th{background:var(--table-head-bg);font-weight:bold}
+hr{border:none;border-top:1px solid var(--border)}
+.toc{
+  margin:1em 0 1.4em 0;
+  padding:0.7em 1em 0.8em 1em;
+  max-width:36em;
+  font-size:0.92em;
+  line-height:1.35;
+  background:var(--toc-bg);
+  border:1px solid var(--border-soft);
+  border-left:3px solid var(--toc-accent);
+}
+.toc .toctitle{
+  display:block;
+  margin:0 0 0.45em 0;
+  font-weight:bold;
+  font-size:1.05em;
+  letter-spacing:0.02em;
+}
+.toc ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.toc ul ul{
+  margin:0.1em 0 0.25em 0;
+  padding-left:1.1em;
+  border-left:1px solid var(--border-faint);
+}
+.toc li{
+  margin:0.12em 0;
+  padding:0;
+}
+.toc > ul > li{
+  margin:0.28em 0;
+}
+.toc a{
+  color:var(--link);
+  text-decoration:none;
+}
+.toc a:hover{
+  text-decoration:underline;
+}
+.footnote{font-size:0.9em;margin-top:1.5em}
+.footnote hr{margin:0.5em 0}
+.footnote-ref,.footnote-backref{text-decoration:none}
+dl{margin:0.8em 0}
+dt{font-weight:bold}
+dd{margin:0 0 0.5em 1.2em}
+abbr{text-decoration:underline dotted;cursor:help}
+.admonition{
+  margin:0.8em 0;
+  padding:0.6em 0.8em;
+  border-left:4px solid var(--admonition-border);
+  background:var(--admonition-bg);
+}
+.admonition-title{font-weight:bold;margin:0 0 0.3em 0}
+.admonition.note,.admonition.hint{
+  border-left-color:var(--note-border);
+  background:var(--note-bg);
+}
+.admonition.warning,.admonition.caution,.admonition.attention{
+  border-left-color:var(--warning-border);
+  background:var(--warning-bg);
+}
+.admonition.danger,.admonition.error{
+  border-left-color:var(--danger-border);
+  background:var(--danger-bg);
+}
+.admonition.tip,.admonition.important{
+  border-left-color:var(--tip-border);
+  background:var(--tip-bg);
+}
+li input[type="checkbox"]{margin-right:0.4em;vertical-align:middle}
+/* DJB brown quotes stay readable on dark backgrounds. */
+body:has(#theme-toggle:checked) font[color="#663319"]{color:#d4a574}
