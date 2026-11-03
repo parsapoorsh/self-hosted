@@ -18,8 +18,13 @@ ensure_nexus_alpine_key() {
   echo "compose: creating ${key}"
   openssl genrsa 2048 2>/dev/null \
     | openssl pkcs8 -topk8 -nocrypt -out "${key}"
-  chmod 600 "${key}"
+  # Nexus container runs as uid 200; bootstrap must read this key.
+  chmod 644 "${key}"
 }
+# Existing keys may still be 0600 from older compose runs.
+if [[ -f "${ROOT}/cert/alpine.key" ]]; then
+  chmod 644 "${ROOT}/cert/alpine.key" || true
+fi
 ensure_nexus_alpine_key
 
 # Primary domain TLS material (nginx fails hard without it).

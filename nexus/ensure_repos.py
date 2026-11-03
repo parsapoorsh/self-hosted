@@ -159,6 +159,11 @@ def expand_catalog(raw: dict[str, Any]) -> tuple[
             # indexes that ARE the simple root (download.pytorch.org/whl).
             if fmt == "pypi" and "indexPath" in extra:
                 entry["indexPath"] = extra["indexPath"]
+            if fmt == "apt":
+                if "distribution" in extra:
+                    entry["distribution"] = extra["distribution"]
+                if "flat" in extra:
+                    entry["flat"] = extra["flat"]
             proxies.append(entry)
 
     groups: list[dict[str, Any]] = []
@@ -257,6 +262,12 @@ def proxy_payload(entry: dict[str, Any]) -> dict[str, Any]:
         body["cargo"] = {"requireAuthentication": False}
     if fmt == "alpine":
         body["alpineSigning"] = {"keypair": entry["alpineKey"]}
+    # flat=false: standard dists/ layout. Empty distribution = multi-suite passthrough.
+    if fmt == "apt":
+        body["apt"] = {
+            "distribution": entry.get("distribution", ""),
+            "flat": bool(entry.get("flat", False)),
+        }
     return body
 
 
