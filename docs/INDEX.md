@@ -26,15 +26,15 @@ Authelia SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 
 | URL | Service |
 |-----|---------|
-| [https://${domain}](https://${domain}/) | Landing (this site) |
-| [https://auth.${domain}](https://auth.${domain}/) | Authelia (login / OIDC) |
-| [https://cloud.${domain}](https://cloud.${domain}/) | Nextcloud |
-| [https://chat.${domain}](https://chat.${domain}/) | Mattermost |
-| [https://mirror.${domain}](https://mirror.${domain}/) | Nexspence UI + package APIs |
-| [https://library.${domain}](https://library.${domain}/) | Kiwix |
+| [https://${domain}${https_port_suffix}](https://${domain}${https_port_suffix}/) | Landing (this site) |
+| [https://auth.${domain}${https_port_suffix}](https://auth.${domain}${https_port_suffix}/) | Authelia (login / OIDC) |
+| [https://cloud.${domain}${https_port_suffix}](https://cloud.${domain}${https_port_suffix}/) | Nextcloud |
+| [https://chat.${domain}${https_port_suffix}](https://chat.${domain}${https_port_suffix}/) | Mattermost |
+| [https://mirror.${domain}${https_port_suffix}](https://mirror.${domain}${https_port_suffix}/) | Nexspence UI + package APIs |
+| [https://library.${domain}${https_port_suffix}](https://library.${domain}${https_port_suffix}/) | Kiwix |
 
 ---
 
 ## Quick links
 
-- PyPI simple: [https://mirror.${domain}/repository/pypi/simple/](https://mirror.${domain}/repository/pypi/simple/)
+- PyPI simple: [https://mirror.${domain}${https_port_suffix}/repository/pypi/simple/](https://mirror.${domain}${https_port_suffix}/repository/pypi/simple/)
