@@ -146,7 +146,9 @@ for legacy in Keycloak Authelia; do
   fi
 done
 
-${OCC} config:app:set user_oidc allow_multiple_user_backends --value=1 >/dev/null || true
+# OIDC-only login (like Mattermost SSO). value=0 hides password form and,
+# with a single provider, redirects /login straight to the IdP.
+${OCC} config:app:set user_oidc allow_multiple_user_backends --value=0 >/dev/null || true
 ${OCC} config:app:delete user_oidc allow_insecure_http >/dev/null 2>&1 || true
-echo "oidc-hook: provider ready (trusted=cloud.${DOMAIN},cloud.localhost)"
+echo "oidc-hook: provider ready (OIDC-only; trusted=cloud.${DOMAIN},cloud.localhost)"
 exit 0
