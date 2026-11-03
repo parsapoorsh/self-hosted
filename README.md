@@ -131,7 +131,7 @@ Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when t
 
 ## Package mirrors
 
-Client guide: **[Mirror](mirror.html)** - cargo, pip, docker, npm, go, ... (hostname remains `mirror.${domain}`)
+Client guide: **[Mirror](docs/MIRROR.md)** - cargo, pip, docker, npm, go, ... (hostname remains `mirror.${domain}`)
 
 Mirror priority in the catalog prefers **cdn.ir**, then **Arvancloud**, then other members. Group repos merge member indexes.
 
