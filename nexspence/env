@@ -10,10 +10,11 @@ NEXSPENCE_HTTP_TRUSTED_PROXIES=*
 # Image scanning off unless an operator mounts Trivy.
 NEXSPENCE_SCAN_TRIVY_ENABLED=false
 
-# Authelia OIDC (issuer / redirect / client secret from compose).
+# Authentik OIDC (issuer / redirect / client secret from compose).
 NEXSPENCE_OIDC_ENABLED=true
-NEXSPENCE_OIDC_DISPLAY_NAME=Authelia
+NEXSPENCE_OIDC_DISPLAY_NAME=Authentik
 NEXSPENCE_OIDC_COOKIE_SECURE=true
+# Members of this Authentik group get nx-admin on first SSO login.
 NEXSPENCE_OIDC_ADMIN_GROUP=admins
 NEXSPENCE_OIDC_GROUPS_CLAIM=groups
 NEXSPENCE_OIDC_PROVISIONING=jit

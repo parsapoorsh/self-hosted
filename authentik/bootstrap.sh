@@ -115,4 +115,32 @@ for p in OAuth2Provider.objects.all():
 print("signing_key=%s providers=%s" % (cert.name, OAuth2Provider.objects.count()))
 '
 
+# Nexspence maps Authentik group "admins" -> nx-admin. Ensure it exists.
+echo "authentik-bootstrap: ensuring admins group"
+"${COMPOSE[@]}" exec -T \
+  -e ADMIN_USER="${ADMIN_USER}" \
+  authentik ak shell -c '
+import os
+from authentik.core.models import User, Group
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
+
+g, _ = Group.objects.get_or_create(name="admins")
+u = User.objects.filter(username=os.environ["ADMIN_USER"]).first()
+if u is not None:
+    g.users.add(u)
+
+gm, _ = ScopeMapping.objects.get_or_create(
+    managed="self-hosted/scope-groups",
+    defaults={
+        "name": "self-hosted groups",
+        "scope_name": "groups",
+        "description": "Group names for Nexspence admin mapping",
+        "expression": "return [group.name for group in request.user.ak_groups.all()]",
+    },
+)
+for p in OAuth2Provider.objects.all():
+    p.property_mappings.add(gm)
+print("admins group ready")
+'
+
 echo "authentik-bootstrap: done"
