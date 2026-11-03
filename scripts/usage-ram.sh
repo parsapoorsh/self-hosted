@@ -5,6 +5,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# compose.yml requires CALLS_ICE_HOST_OVERRIDE for interpolation (same as compose.sh).
+if [[ -z "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then
+  if [[ -f .env ]]; then
+    # shellcheck disable=SC1091
+    set -a
+    source .env
+    set +a
+  fi
+fi
+if [[ -z "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then
+  CALLS_ICE_HOST_OVERRIDE="$(ip -4 route get 1.1.1.1 2>/dev/null \
+    | awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')"
+  export CALLS_ICE_HOST_OVERRIDE
+fi
+if [[ -z "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then
+  echo "usage-ram: set CALLS_ICE_HOST_OVERRIDE in .env (or use ./scripts/compose.sh)" >&2
+  exit 1
+fi
+export CALLS_ICE_HOST_OVERRIDE
+
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 # Human size from docker stats (e.g. 21.35MiB, 1.2GiB) -> bytes.
