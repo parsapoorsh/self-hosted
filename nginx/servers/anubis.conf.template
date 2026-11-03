@@ -1,16 +1,16 @@
 # Edge: Anubis bot filter (default). Protected hosts only.
-# DOMAIN on :80; DOMAIN + localhost on :443 (localhost HTTP redirected elsewhere).
+# DOMAIN on HTTP_PORT; DOMAIN + localhost on HTTPS_PORT (localhost HTTP redirected elsewhere).
 
 # TEMPORARY: HTTP -> HTTPS for public hosts (remove when plain HTTP is needed again).
 server {
-    listen 80 default_server;
+    listen __HTTP_PORT__ default_server;
     server_name __DOMAIN__ www.__DOMAIN__ library.__DOMAIN__;
 
-    return 301 https://$host$request_uri;
+    return 302 https://$host__HTTPS_PORT_SUFFIX__$request_uri;
 }
 
 server {
-    listen 443 ssl default_server;
+    listen __HTTPS_PORT__ ssl default_server;
     server_name __DOMAIN__ www.__DOMAIN__ library.__DOMAIN__
                 localhost www.localhost library.localhost;
 

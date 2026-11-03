@@ -1,8 +1,11 @@
 #!/bin/sh
-# Ensure localhost cert, render server templates (__DOMAIN__ -> DOMAIN), start nginx.
+# Ensure localhost cert, render server templates, start nginx.
+# Placeholders: __DOMAIN__, __HTTP_PORT__, __HTTPS_PORT__, __HTTPS_PORT_SUFFIX__
 set -eu
 
 DOMAIN="${DOMAIN:-example.com}"
+HTTP_PORT="${HTTP_PORT:-80}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
 SRC="/etc/nginx/self-hosted"
 RUNTIME="/etc/nginx/self-hosted-runtime"
 CERTS="/etc/nginx/certs"
@@ -14,6 +17,20 @@ case "$DOMAIN" in
     exit 1
     ;;
 esac
+
+# Published edge ports must be plain integers (listen + host publish match).
+case "$HTTP_PORT" in
+  *[!0-9]* | "" ) echo "invalid HTTP_PORT: $HTTP_PORT" >&2; exit 1 ;;
+esac
+case "$HTTPS_PORT" in
+  *[!0-9]* | "" ) echo "invalid HTTPS_PORT: $HTTPS_PORT" >&2; exit 1 ;;
+esac
+
+# Empty suffix for default ports so redirects omit :443 / :80.
+HTTPS_PORT_SUFFIX=""
+if [ "$HTTPS_PORT" != "443" ]; then
+  HTTPS_PORT_SUFFIX=":${HTTPS_PORT}"
+fi
 
 mkdir -p "$RUNTIME/snippets" "$RUNTIME/servers"
 
@@ -126,7 +143,12 @@ rm -f "$RUNTIME/servers/"*.conf
 for src in "$SRC"/servers/*.conf.template; do
   [ -f "$src" ] || continue
   base="$(basename "$src" .template)"
-  sed "s/__DOMAIN__/${DOMAIN}/g" "$src" >"$RUNTIME/servers/$base"
+  sed \
+    -e "s/__DOMAIN__/${DOMAIN}/g" \
+    -e "s/__HTTP_PORT__/${HTTP_PORT}/g" \
+    -e "s/__HTTPS_PORT__/${HTTPS_PORT}/g" \
+    -e "s/__HTTPS_PORT_SUFFIX__/${HTTPS_PORT_SUFFIX}/g" \
+    "$src" >"$RUNTIME/servers/$base"
 done
 
 # Primary domain cert must exist (operator-provided or self-signed on host).
@@ -145,6 +167,6 @@ for key in "$CERTS/$DOMAIN/privkey.pem" "$CERTS/localhost/privkey.pem"; do
   fi
 done
 
-echo "nginx DOMAIN=${DOMAIN} + localhost servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
+echo "nginx DOMAIN=${DOMAIN} HTTP_PORT=${HTTP_PORT} HTTPS_PORT=${HTTPS_PORT} servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf

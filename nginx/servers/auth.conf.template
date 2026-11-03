@@ -3,14 +3,14 @@
 
 # TEMPORARY: HTTP -> HTTPS for public hosts.
 server {
-    listen 80;
+    listen __HTTP_PORT__;
     server_name auth.__DOMAIN__;
 
-    return 301 https://$host$request_uri;
+    return 302 https://$host__HTTPS_PORT_SUFFIX__$request_uri;
 }
 
 server {
-    listen 443 ssl;
+    listen __HTTPS_PORT__ ssl;
     server_name auth.__DOMAIN__ auth.localhost;
 
     include /etc/nginx/self-hosted/snippets/edge-tls.conf;

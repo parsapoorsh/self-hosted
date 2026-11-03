@@ -5,10 +5,14 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      # Host port == container listen port so internal OIDC URLs with
+      # HTTPS_PORT_SUFFIX reach nginx (e.g. auth.$DOMAIN:8443).
+      - "${HTTP_PORT:-80}:${HTTP_PORT:-80}"
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
     environment:
       DOMAIN: ${DOMAIN:-example.com}
+      HTTP_PORT: ${HTTP_PORT:-80}
+      HTTPS_PORT: ${HTTPS_PORT:-443}
     volumes:
       - ./nginx:/etc/nginx/self-hosted:ro
       - ./static:/usr/share/nginx/html:ro
