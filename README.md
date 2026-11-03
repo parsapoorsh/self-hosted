@@ -1,8 +1,3 @@
----
-title: README
-page_title: README * ${domain}
----
-
 # self-hosted * ${domain}
 
 Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps.
