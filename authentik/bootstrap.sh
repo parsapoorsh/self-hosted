@@ -81,16 +81,16 @@ echo "authentik-bootstrap: base_url=${AUTH_BASE_URL}"
 import os
 from authentik.tenants.models import Tenant
 from authentik.brands.models import Brand
+from authentik.core.apps import Setup
 
 base = os.environ["AUTH_BASE_URL"]
 host = os.environ["AUTH_HOST"]
 
 t = Tenant.objects.get(schema_name="public")
 t.base_url = base
-flags = dict(t.flags or {})
-flags["setup"] = False
-t.flags = flags
 t.save()
+# setup=True means first-run wizard is finished (False redirects to /setup).
+Setup.set(True, tenant=t)
 
 # Default brand matches public Host (with non-default port when set).
 b = Brand.objects.get(default=True)
@@ -116,7 +116,7 @@ if not created:
     lb.flow_invalidation = b.flow_invalidation
     lb.flow_user_settings = b.flow_user_settings
     lb.save()
-print(f"base_url={t.base_url} brand={b.domain} local_brand={lb.domain}")
+print(f"base_url={t.base_url} setup={Setup.get(tenant=t)} brand={b.domain} local={lb.domain}")
 '
 
 # Wait for custom blueprints (OIDC apps) to apply.
