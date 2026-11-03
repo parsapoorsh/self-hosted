@@ -52,6 +52,13 @@ fi
 ${OCC} config:system:set skeletondirectory --value='' >/dev/null
 ${OCC} config:app:set dav enableDefaultContact --value=no >/dev/null
 
+# Start at Files (Drive-like), not Dashboard.
+${OCC} config:system:set defaultapp --value='files' >/dev/null
+${OCC} config:app:set core defaultapp --value='files' >/dev/null
+if ${OCC} app:list --enabled 2>/dev/null | grep -q 'dashboard'; then
+  ${OCC} app:disable dashboard >/dev/null || true
+fi
+
 if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   echo "oidc-hook: installing user_oidc"
   ${OCC} app:install user_oidc 2>/dev/null || true
