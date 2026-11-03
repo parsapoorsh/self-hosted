@@ -43,21 +43,30 @@ ${OCC} config:system:delete overwritehost >/dev/null 2>&1 || true
 ${OCC} config:system:set overwrite.cli.url \
   --value="https://cloud.${DOMAIN}${HTTPS_PORT_SUFFIX}" >/dev/null
 
-# Drop the first-login modal ("A collaboration platform that puts you in control").
-if ${OCC} app:list --enabled 2>/dev/null | grep -q 'firstrunwizard'; then
-  ${OCC} app:disable firstrunwizard >/dev/null || true
-fi
-
-# No sample personal files for new users; no Leon Green / leon@example.com contact.
+# Drive-like surface: Files + Office/Text/Viewer. Drop social/groupware noise.
+# No sample personal files; no Leon Green / leon@example.com contact.
 ${OCC} config:system:set skeletondirectory --value='' >/dev/null
 ${OCC} config:app:set dav enableDefaultContact --value=no >/dev/null
 
-# Start at Files (Drive-like), not Dashboard.
+# Start at Files, not Dashboard.
 ${OCC} config:system:set defaultapp --value='files' >/dev/null
 ${OCC} config:app:set core defaultapp --value='files' >/dev/null
-if ${OCC} app:list --enabled 2>/dev/null | grep -q 'dashboard'; then
-  ${OCC} app:disable dashboard >/dev/null || true
-fi
+
+# No App Store / web upgrades (install apps only via image or occ on the host).
+${OCC} config:system:set appstoreenabled --type=boolean --value=false >/dev/null
+${OCC} config:system:set updatechecker --type=boolean --value=false >/dev/null
+${OCC} config:system:set upgrade.disable-web --type=boolean --value=true >/dev/null
+
+# Best-effort disable; some ship as always-on (appstore, profile, dav, files, …).
+for app in \
+  activity app_api circles comments contactsinteraction dashboard \
+  federation files_downloadlimit files_reminders firstrunwizard logreader \
+  nextcloud_announcements photos privacy recommendations related_resources \
+  serverinfo support survey_client systemtags updatenotification \
+  user_status weather_status webhook_listeners
+do
+  ${OCC} app:disable "${app}" >/dev/null 2>&1 || true
+done
 
 if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
   echo "oidc-hook: installing user_oidc"
