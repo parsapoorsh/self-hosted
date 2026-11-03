@@ -21,9 +21,15 @@ source .env.secrets
 set +a
 
 DOMAIN="${DOMAIN:-example.com}"
+HTTP_PORT="${HTTP_PORT:-80}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?}"
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
+
+# Edge base (published host ports). Empty path; Host header selects the vhost.
+EDGE_HTTPS="https://127.0.0.1:${HTTPS_PORT}"
+EDGE_HTTP="http://127.0.0.1:${HTTP_PORT}"
 
 fail=0
 ok() { echo "smoke: OK  $*"; }
@@ -147,16 +153,16 @@ fi
 
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Host: auth.localhost" \
-  "https://127.0.0.1/.well-known/openid-configuration" || echo 000)"
+  "${EDGE_HTTPS}/.well-known/openid-configuration" || echo 000)"
 if [[ "${code}" == "200" ]]; then
-  ok "edge auth.localhost discovery"
+  ok "edge auth.localhost discovery (:${HTTPS_PORT})"
 else
-  bad "edge auth.localhost discovery HTTP ${code}"
+  bad "edge auth.localhost discovery HTTP ${code} (:${HTTPS_PORT})"
 fi
 
 # UI is public to the edge; SSO is Nexspence native OIDC (Sign in with Authelia).
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
-  -H "Host: mirror.localhost" "https://127.0.0.1/" || echo 000)"
+  -H "Host: mirror.localhost" "${EDGE_HTTPS}/" || echo 000)"
 if [[ "${code}" == "200" || "${code}" == "302" || "${code}" == "301" ]]; then
   ok "edge mirror.localhost UI HTTP ${code}"
 else
@@ -166,11 +172,28 @@ fi
 # Package path must not require browser SSO.
 code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 \
   -H "Host: mirror.localhost" \
-  "https://127.0.0.1/service/rest/v1/status" || echo 000)"
+  "${EDGE_HTTPS}/service/rest/v1/status" || echo 000)"
 if [[ "${code}" == "200" ]]; then
   ok "edge mirror status"
 else
   bad "edge mirror status HTTP ${code}"
+fi
+
+# HTTP -> HTTPS must be temporary (302) and keep the configured HTTPS port.
+https_suffix=""
+if [[ "${HTTPS_PORT}" != "443" ]]; then
+  https_suffix=":${HTTPS_PORT}"
+fi
+redir="$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 10 \
+  -H "Host: chat.${DOMAIN}" \
+  "${EDGE_HTTP}/" || echo "000 ")"
+redir_code="${redir%% *}"
+redir_url="${redir#* }"
+expect_loc="https://chat.${DOMAIN}${https_suffix}/"
+if [[ "${redir_code}" == "302" && "${redir_url}" == "${expect_loc}" ]]; then
+  ok "HTTP->HTTPS chat redirect 302 -> ${expect_loc}"
+else
+  bad "HTTP->HTTPS chat redirect got '${redir}' want '302 ${expect_loc}'"
 fi
 
 MM_IP="$(container_ip mattermost || true)"
@@ -188,7 +211,7 @@ fi
 
 # Nextcloud: login page must expose Authelia as alternative OIDC login.
 code="$(curl -sk -o /tmp/nc-login-smoke.html -w '%{http_code}' --max-time 15 \
-  -H "Host: cloud.localhost" "https://127.0.0.1/login" || echo 000)"
+  -H "Host: cloud.localhost" "${EDGE_HTTPS}/login" || echo 000)"
 if [[ "${code}" == "200" ]]; then
   alts="$(python3 - <<'PY'
 import base64, json, re, sys

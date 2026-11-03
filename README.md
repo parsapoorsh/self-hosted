@@ -2,7 +2,9 @@
 
 Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Mattermost**, **Nexspence** (package registry on `mirror.*`), **Kiwix**, and a static landing page. One human admin is shared across the apps.
 
-Public edge is **HTTPS**. HTTP on `*.${domain}` redirects to HTTPS.
+Public edge is **HTTPS**. HTTP on `*.${domain}` temporary-redirects (302) to HTTPS.
+
+Optional edge ports via `.env`: `HTTP_PORT` / `HTTPS_PORT` (defaults 80 / 443). Non-default ports appear in public URLs and OIDC redirect URIs (open `https://chat.${domain}:8443` when `HTTPS_PORT=8443`).
 
 ## Services
 
@@ -22,7 +24,7 @@ Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous 
 ## Requirements
 
 - Docker with Compose v2  
-- Ports 80 / 443 free  
+- Free host ports for the edge (defaults 80 / 443; override with `HTTP_PORT` / `HTTPS_PORT`)
 - OpenSSL (cert scripts)  
 - Python venv for landing pages: `venv/` + `docs/compiler/requirements.txt`  
 
@@ -66,6 +68,7 @@ Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repo
 | `ORG_NAME` | Mattermost organization / default team name |
 | `POSTGRES_PASSWORD` | Postgres superuser |
 | `KEYCLOAK_ADMIN` / `_PASSWORD` | Shared app admin |
+| `HTTP_PORT` / `HTTPS_PORT` | Edge publish + listen ports (default 80 / 443) |
 
 ### Derived secrets
 
@@ -127,7 +130,7 @@ Full wipe: `./scripts/reset.sh`
 3. **Mattermost** - GitLab SSO settings pointed at Authelia OIDC (`/signup/gitlab/complete`)  
 4. **Nexspence UI** - native OIDC to Authelia (`/api/v1/auth/oidc/callback`); OIDC client id is `mirror`  
 
-Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS. Mattermost uses `https://chat.${domain}/signup/gitlab/complete`.
+Redirect URI must be `https://mirror.${domain}/api/v1/auth/oidc/callback` when the site is public HTTPS (append `:${HTTPS_PORT}` when the edge is not on 443). Mattermost uses `https://chat.${domain}/signup/gitlab/complete` with the same port rule.
 
 ## Package mirrors
 
