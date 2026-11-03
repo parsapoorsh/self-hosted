@@ -34,7 +34,9 @@ services:
     env_file:
       - ./anubis/env
     environment:
-      COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-true}"
+      # false so challenges work on plain HTTP (Secure/Partitioned cookies are HTTPS-only).
+      COOKIE_SECURE: "${ANUBIS_COOKIE_SECURE:-false}"
+      COOKIE_PARTITIONED: "${ANUBIS_COOKIE_PARTITIONED:-false}"
     volumes:
       - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
     networks:
