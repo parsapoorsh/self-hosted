@@ -135,6 +135,10 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
     status=$?
   fi
   if [[ "${status}" -eq 0 ]]; then
+    echo "compose: mattermost bootstrap (org/team defaults)..."
+    ./mattermost/bootstrap.sh || status=$?
+  fi
+  if [[ "${status}" -eq 0 ]]; then
     echo "compose: running smoke-check (bootstraps can take a few minutes)..."
     ./scripts/smoke-check.sh || status=$?
   fi
