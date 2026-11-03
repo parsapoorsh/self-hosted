@@ -11,11 +11,16 @@ MM_GITLABSETTINGS_BUTTONCOLOR=#000000
 # openid/profile/email + mattermost (custom username claim for GitLab-shaped userinfo).
 MM_GITLABSETTINGS_SCOPE=openid profile email mattermost
 
-# Prefer SSO; keep email/username sign-in off after first boot is possible.
+# Authelia-only auth: no local email/username create-account or password login.
+# EnableUserCreation stays true so first Authelia login can create the MM user.
 MM_SERVICESETTINGS_ENABLESECURITYFIXALERT=false
-# Skip "Where would you like to view this?" (desktop app vs browser); open in browser.
-MM_SERVICESETTINGS_ENABLEDESKTOPLANDINGPAGE=false
-MM_TEAMSETTINGS_ENABLEOPENSERVER=true
+MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL=false
+MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL=false
+MM_EMAILSETTINGS_ENABLESIGNINWITHUSERNAME=false
 MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS=false
 MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION=false
 MM_EMAILSETTINGS_ENABLESMTPAUTH=false
+MM_TEAMSETTINGS_ENABLEOPENSERVER=true
+MM_TEAMSETTINGS_ENABLEUSERCREATION=true
+# Skip "Where would you like to view this?" (desktop app vs browser); open in browser.
+MM_SERVICESETTINGS_ENABLEDESKTOPLANDINGPAGE=false
