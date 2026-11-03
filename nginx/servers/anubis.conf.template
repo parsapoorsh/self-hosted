@@ -1,5 +1,5 @@
 # Edge: Anubis bot filter (default). Protected hosts only.
-# DOMAIN on HTTP_PORT; DOMAIN + localhost on HTTPS_PORT (localhost HTTP redirected elsewhere).
+# DOMAIN on :80; DOMAIN + localhost on HTTPS_PORT (localhost HTTP redirected elsewhere).
 
 # TEMPORARY: HTTP -> HTTPS for public hosts (remove when plain HTTP is needed again).
 server {

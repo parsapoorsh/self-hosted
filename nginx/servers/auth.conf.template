@@ -3,7 +3,7 @@
 
 # TEMPORARY: HTTP -> HTTPS for public hosts.
 server {
-    listen __HTTP_PORT__;
+    listen 80;
     server_name auth.__DOMAIN__;
 
     return 302 https://$host__HTTPS_PORT_SUFFIX__$request_uri;

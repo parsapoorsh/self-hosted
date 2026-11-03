@@ -1,10 +1,11 @@
 #!/bin/sh
 # Ensure localhost cert, render server templates, start nginx.
-# Placeholders: __DOMAIN__, __HTTP_PORT__, __HTTPS_PORT__, __HTTPS_PORT_SUFFIX__
+# Placeholders: __DOMAIN__, __HTTPS_PORT__, __HTTPS_PORT_SUFFIX__
+# Edge HTTP always listens :80 inside the container (host maps HTTP_PORT->80)
+# so HTTP_PORT=8080 does not collide with the Anubis backend on :8080.
 set -eu
 
 DOMAIN="${DOMAIN:-example.com}"
-HTTP_PORT="${HTTP_PORT:-80}"
 HTTPS_PORT="${HTTPS_PORT:-443}"
 SRC="/etc/nginx/self-hosted"
 RUNTIME="/etc/nginx/self-hosted-runtime"
@@ -18,15 +19,12 @@ case "$DOMAIN" in
     ;;
 esac
 
-# Published edge ports must be plain integers (listen + host publish match).
-case "$HTTP_PORT" in
-  *[!0-9]* | "" ) echo "invalid HTTP_PORT: $HTTP_PORT" >&2; exit 1 ;;
-esac
+# HTTPS listen port must be a plain integer (matches host publish).
 case "$HTTPS_PORT" in
   *[!0-9]* | "" ) echo "invalid HTTPS_PORT: $HTTPS_PORT" >&2; exit 1 ;;
 esac
 
-# Empty suffix for default ports so redirects omit :443 / :80.
+# Empty suffix for default 443 so redirects omit :443.
 HTTPS_PORT_SUFFIX=""
 if [ "$HTTPS_PORT" != "443" ]; then
   HTTPS_PORT_SUFFIX=":${HTTPS_PORT}"
@@ -145,7 +143,6 @@ for src in "$SRC"/servers/*.conf.template; do
   base="$(basename "$src" .template)"
   sed \
     -e "s/__DOMAIN__/${DOMAIN}/g" \
-    -e "s/__HTTP_PORT__/${HTTP_PORT}/g" \
     -e "s/__HTTPS_PORT__/${HTTPS_PORT}/g" \
     -e "s/__HTTPS_PORT_SUFFIX__/${HTTPS_PORT_SUFFIX}/g" \
     "$src" >"$RUNTIME/servers/$base"
@@ -167,6 +164,6 @@ for key in "$CERTS/$DOMAIN/privkey.pem" "$CERTS/localhost/privkey.pem"; do
   fi
 done
 
-echo "nginx DOMAIN=${DOMAIN} HTTP_PORT=${HTTP_PORT} HTTPS_PORT=${HTTPS_PORT} servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
+echo "nginx DOMAIN=${DOMAIN} HTTPS_PORT=${HTTPS_PORT} servers=$(ls "$RUNTIME/servers" | tr '\n' ' ')"
 
 exec nginx -g "daemon off;" -c /etc/nginx/self-hosted/nginx.conf
