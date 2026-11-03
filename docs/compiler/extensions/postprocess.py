@@ -28,8 +28,8 @@ class DjbInlineTagPostprocessor(markdown.postprocessors.Postprocessor):
 class DjbPreTrailingNewlinePostprocessor(markdown.postprocessors.Postprocessor):
     """Drop the final newline Markdown leaves inside each <pre> block.
 
-    Fenced output looks like ``<pre><tt>…\\n</tt></pre>`` (or bare
-    ``<pre>…\\n</pre>``). Strip one trailing newline before the last
+    Fenced output looks like ``<pre><tt>...\\n</tt></pre>`` (or bare
+    ``<pre>...\\n</pre>``). Strip one trailing newline before the last
     close-tag inside the pre, so the box has no blank last line.
     """
 
@@ -41,7 +41,7 @@ class DjbPreTrailingNewlinePostprocessor(markdown.postprocessors.Postprocessor):
     def run(self, text: str) -> str:
         def fix(match: re.Match[str]) -> str:
             open_tag, body, close_tag = match.group(1), match.group(2), match.group(3)
-            # …text\n</tt>  or  …text\n
+            # ...text\n</tt>  or  ...text\n
             body = re.sub(r"\n(?=(?:</[^>]+>\s*)*$)", "", body, count=1)
             if body.endswith("\n"):
                 body = body[:-1]
@@ -53,7 +53,7 @@ class DjbPreTrailingNewlinePostprocessor(markdown.postprocessors.Postprocessor):
 class DjbCodeBlockPostprocessor(markdown.postprocessors.Postprocessor):
     """Wrap each fenced block in a shell with a top-right copy button.
 
-    CodeHilite emits ``<div class="codehilite"><pre>…</pre></div>``.
+    CodeHilite emits ``<div class="codehilite"><pre>...</pre></div>``.
     Any remaining bare ``<pre>`` (no hilite wrapper) gets the same shell.
     """
 

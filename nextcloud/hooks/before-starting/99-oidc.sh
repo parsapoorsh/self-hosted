@@ -1,6 +1,6 @@
 #!/bin/sh
 # Trusted domains + user_oidc against Authelia. Idempotent.
-# Nextcloud image runs hooks with /bin/sh — keep POSIX (no bash arrays).
+# Nextcloud image runs hooks with /bin/sh - keep POSIX (no bash arrays).
 set -eu
 
 OCC="php /var/www/html/occ"
@@ -11,7 +11,7 @@ CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
 PROVIDER_ID="${OIDC_PROVIDER_ID:-Authelia}"
 
 if [ -z "${CLIENT_SECRET}" ]; then
-  echo "oidc-hook: OIDC_CLIENT_SECRET empty — skip"
+  echo "oidc-hook: OIDC_CLIENT_SECRET empty - skip"
   exit 0
 fi
 
@@ -22,13 +22,13 @@ DISCOVERY="https://auth.${DOMAIN}/.well-known/openid-configuration"
 HEALTH_INTERNAL="http://authelia:9091/api/health"
 
 if ! ${OCC} status 2>/dev/null | grep -q 'installed: true'; then
-  echo "oidc-hook: nextcloud not installed yet — skip"
+  echo "oidc-hook: nextcloud not installed yet - skip"
   exit 0
 fi
 
 ${OCC} config:system:set allow_local_remote_servers --type=boolean --value=true >/dev/null
 
-# Both public names. Do not force overwritehost — Host header must win so
+# Both public names. Do not force overwritehost - Host header must win so
 # cloud.localhost stays on localhost (otherwise redirects to cloud.<DOMAIN>).
 # overwriteprotocol comes from OVERWRITEPROTOCOL env (APP_SCHEME via compose).
 ${OCC} config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null
@@ -50,7 +50,7 @@ while [ "$i" -le 60 ]; do
     break
   fi
   if [ "$i" -eq 60 ]; then
-    echo "oidc-hook: Authelia health not reachable — skip (will retry next start)"
+    echo "oidc-hook: Authelia health not reachable - skip (will retry next start)"
     exit 0
   fi
   i=$((i + 1))

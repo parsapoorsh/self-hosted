@@ -1,6 +1,6 @@
 #!/bin/sh
 # Render configuration.yml.template with secrets, seed users DB, start Authelia.
-# Image is Alpine/busybox — keep this POSIX sh (no bash).
+# Image is Alpine/busybox - keep this POSIX sh (no bash).
 set -eu
 
 DATA="${AUTHELIA_DATA_DIR:-/data}"
@@ -31,7 +31,7 @@ MM_CLIENT_SECRET="${MATTERMOST_OIDC_CLIENT_SECRET:-}"
 SESSION_SECRET="${SESSION_SECRET:-}"
 STORAGE_KEY="${STORAGE_ENCRYPTION_KEY:-}"
 HMAC_SECRET="${OIDC_HMAC_SECRET:-}"
-# AUTH_DB_PASSWORD (not AUTHELIA_*) — Authelia maps AUTHELIA_* env to config keys.
+# AUTH_DB_PASSWORD (not AUTHELIA_*) - Authelia maps AUTHELIA_* env to config keys.
 DB_PASSWORD="${AUTH_DB_PASSWORD:-}"
 
 log() { echo "authelia: $*" >&2; }
@@ -48,14 +48,14 @@ die() { log "ERROR: $*"; exit 1; }
 [ -n "${HMAC_SECRET}" ] || die "OIDC_HMAC_SECRET required"
 [ -n "${DB_PASSWORD}" ] || die "AUTH_DB_PASSWORD required"
 
-# Username becomes a YAML key in the users file — keep it simple.
+# Username becomes a YAML key in the users file - keep it simple.
 case "${ADMIN_USER}" in
   *[!a-zA-Z0-9_-]* | "")
     die "admin username must match [a-zA-Z0-9_-]+ (got '${ADMIN_USER}')"
     ;;
 esac
 
-# DOMAIN is substituted into hostnames — allow simple DNS labels only.
+# DOMAIN is substituted into hostnames - allow simple DNS labels only.
 case "${DOMAIN}" in
   *[!a-zA-Z0-9.-]* | "" | .* | *..* | *- | *-.* )
     die "invalid DOMAIN: ${DOMAIN}"

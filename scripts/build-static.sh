@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build landing HTML under static/ from docs/*.md (DOMAIN → ${domain}).
+# Build landing HTML under static/ from docs/*.md (DOMAIN -> ${domain}).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

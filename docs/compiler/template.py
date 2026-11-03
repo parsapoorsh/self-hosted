@@ -27,5 +27,5 @@ def fill_template(template: str, values: dict[str, str]) -> str:
             raise KeyError(f"unknown template placeholder: {key}")
         return values[key]
 
-    # Tiny {{ name }} slots in template.html — not HTML structure.
+    # Tiny {{ name }} slots in template.html - not HTML structure.
     return PLACEHOLDER_RE.sub(replace, template)

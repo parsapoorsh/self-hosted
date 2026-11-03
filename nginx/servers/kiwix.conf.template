@@ -1,4 +1,4 @@
-# Backend (:8080): Kiwix — reached via Anubis TARGET after edge challenge.
+# Backend (:8080): Kiwix - reached via Anubis TARGET after edge challenge.
 
 server {
     listen 8080;

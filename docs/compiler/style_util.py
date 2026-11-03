@@ -12,7 +12,7 @@ IMG_WIDTH_RE = re.compile(
 
 
 def parse_style_decl(style: str) -> dict[str, str]:
-    """Split a CSS style attribute into a name → value map."""
+    """Split a CSS style attribute into a name -> value map."""
     out: dict[str, str] = {}
     for part in style.split(";"):
         part = part.strip()
@@ -31,7 +31,7 @@ def normalize_length(raw: object, what: str = "width") -> str:
     """Require a positive CSS length: N%, Npx, Nem, or Nrem.
 
     Percent becomes a fraction of CSS --measure (em-based in template.css)
-    so figures track font zoom: 30% → calc(var(--measure) * 30 / 100).
+    so figures track font zoom: 30% -> calc(var(--measure) * 30 / 100).
     """
     value = str(raw).strip()
     if not value:

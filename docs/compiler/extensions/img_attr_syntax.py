@@ -1,4 +1,4 @@
-"""Require {: …} attr_list on images; reject {width=…} shorthand."""
+"""Require {: ...} attr_list on images; reject {width=...} shorthand."""
 
 from __future__ import annotations
 

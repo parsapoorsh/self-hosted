@@ -1,5 +1,5 @@
 # Edge: Mattermost (Anubis bypass).
-# SSO via Authelia (GitLabSettings → OIDC). Public: mattermost.__DOMAIN__ and mattermost.localhost
+# SSO via Authelia (GitLabSettings -> OIDC). Public: mattermost.__DOMAIN__ and mattermost.localhost
 
 # TEMPORARY: HTTP -> HTTPS for public hosts.
 server {

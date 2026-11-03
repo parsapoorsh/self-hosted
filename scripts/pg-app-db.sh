@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create (or update password for) an app database on the shared postgres service.
-# Use this after the volume already exists — init scripts only run on first boot.
+# Use this after the volume already exists - init scripts only run on first boot.
 #
 # Usage:
 #   ./scripts/pg-app-db.sh <db> <user> <password>

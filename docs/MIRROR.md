@@ -1,6 +1,6 @@
 ---
 title: Mirror
-page_title: Mirror · mirror.${domain}
+page_title: Mirror * mirror.${domain}
 ---
 
 # Package mirrors
@@ -70,10 +70,10 @@ docker pull mirror.${domain}/repository/quay/prometheus/prometheus:latest
 
 | Registry | Pull prefix |
 |----------|-------------|
-| Docker Hub | `mirror.${domain}/repository/docker/…` (or `registry-mirrors` above) |
-| GHCR | `mirror.${domain}/repository/ghcr/…` |
-| Kubernetes | `mirror.${domain}/repository/k8s/…` |
-| Quay | `mirror.${domain}/repository/quay/…` |
+| Docker Hub | `mirror.${domain}/repository/docker/...` (or `registry-mirrors` above) |
+| GHCR | `mirror.${domain}/repository/ghcr/...` |
+| Kubernetes | `mirror.${domain}/repository/k8s/...` |
+| Quay | `mirror.${domain}/repository/quay/...` |
 
 ---
 
@@ -154,6 +154,6 @@ curl -fsS -o /dev/null -w "%{http_code}\n" https://mirror.${domain}/repository/c
 | Go | `https://mirror.${domain}/repository/go/` |
 | Go sum | `https://mirror.${domain}/repository/go-sum/` |
 | NuGet | `https://mirror.${domain}/repository/nuget/index.json` |
-| Alpine | `https://mirror.${domain}/repository/alpine/…` |
-| Docker | `mirror.${domain}/repository/docker/…` |
+| Alpine | `https://mirror.${domain}/repository/alpine/...` |
+| Docker | `mirror.${domain}/repository/docker/...` |
 | Node dist | `https://mirror.${domain}/repository/nodejs/` |

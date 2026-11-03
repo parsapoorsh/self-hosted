@@ -9,8 +9,8 @@ log:
 
 # Mattermost enterprise OpenID path (scope contains "openid"):
 #   Username = preferred_username OR email local-part, then CleanUsername().
-# Authelia hardcodes preferred_username → real username (cannot remap).
-# So omit preferred_username and remap email local-part for admin → sysadmin@DOMAIN.
+# Authelia hardcodes preferred_username -> real username (cannot remap).
+# So omit preferred_username and remap email local-part for admin -> sysadmin@DOMAIN.
 definitions:
   user_attributes:
     mattermost_username:
@@ -99,7 +99,7 @@ __JWKS_PEM__
       allowed_origins_from_client_redirect_uris: true
     # Mattermost OpenID provider ignores custom "username"; uses preferred_username
     # (hardcoded to Authelia username in Authelia) or email local-part. Omit
-    # preferred_username; remap email so admin → sysadmin@DOMAIN.
+    # preferred_username; remap email so admin -> sysadmin@DOMAIN.
     claims_policies:
       # Nexspence reads preferred_username/email from the ID token (not userinfo).
       mirror:
@@ -199,8 +199,8 @@ __JWKS_PEM__
           - 'https://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'http://mattermost.__DOMAIN__/login/gitlab/complete'
           - 'https://mattermost.localhost/login/gitlab/complete'
-        # openid only + mattermost (no profile/email scopes — those force
-        # preferred_username=admin and email=admin@… via Authelia defaults).
+        # openid only + mattermost (no profile/email scopes - those force
+        # preferred_username=admin and email=admin@... via Authelia defaults).
         scopes:
           - openid
           - mattermost

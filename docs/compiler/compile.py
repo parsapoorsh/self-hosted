@@ -12,7 +12,7 @@ from format_html import prettify_html
 from metadata import require_meta, split_metadata
 from template import TEMPLATE_CSS, TEMPLATE_HTML, fill_template
 
-# ${domain} / ${DOMAIN} in markdown → apex domain from env / .env
+# ${domain} / ${DOMAIN} in markdown -> apex domain from env / .env
 DOMAIN_PLACEHOLDER_RE = re.compile(r"\$\{domain\}", re.IGNORECASE)
 
 
@@ -23,7 +23,7 @@ def resolve_domain(explicit: str | None = None) -> str:
     env_val = (os.environ.get("DOMAIN") or "").strip()
     if env_val:
         return env_val
-    # Walk up from this file: docs/compiler → docs → repo root
+    # Walk up from this file: docs/compiler -> docs -> repo root
     root = Path(__file__).resolve().parents[2]
     env_file = root / ".env"
     if env_file.is_file():

@@ -1,4 +1,4 @@
-"""<md-name> … </md-name> block with nested Markdown."""
+"""<md-name> ... </md-name> block with nested Markdown."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from extensions.constants import MD_BLOCK_END_RE, MD_BLOCK_START_RE
 
 
 class MdBlockProcessor(BlockProcessor):
-    """Parse <md-name>…</md-name> into an element with nested Markdown.
+    """Parse <md-name>...</md-name> into an element with nested Markdown.
 
-    The tag applies to everything inside (text, images, lists, …).
+    The tag applies to everything inside (text, images, lists, ...).
     """
 
     def test(self, parent, block):

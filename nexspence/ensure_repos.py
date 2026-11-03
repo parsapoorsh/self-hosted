@@ -15,7 +15,7 @@ from base64 import b64encode
 from typing import Any
 
 
-# Shared defaults — not repeated in catalog.json
+# Shared defaults - not repeated in catalog.json
 CACHE_MIN = 1440
 DOCKER_PROXY = {
     "v1Enabled": True,
@@ -97,7 +97,7 @@ class Api:
                     if not raw:
                         return code, None
                     text = raw.decode(errors="replace")
-                    # SPA fallback for unknown routes is HTML 200 — treat as missing.
+                    # SPA fallback for unknown routes is HTML 200 - treat as missing.
                     if text.lstrip().startswith("<!DOCTYPE") or text.lstrip().startswith("<html"):
                         return 404, None
                     try:

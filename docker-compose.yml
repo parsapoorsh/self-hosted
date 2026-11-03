@@ -237,7 +237,7 @@ services:
       retries: 18
       start_period: 40s
 
-  # Mattermost — Authelia via GitLab SSO (enterprise image; SSO needs license features)
+  # Mattermost - Authelia via GitLab SSO (enterprise image; SSO needs license features)
   mattermost:
     image: mattermost/mattermost-enterprise-edition:12.0.1
     env_file:
@@ -269,7 +269,7 @@ services:
     networks:
       - self-hosted
     restart: unless-stopped
-    # Image is minimal (no /bin/sh or curl) — smoke-check probes /api/v4/system/ping.
+    # Image is minimal (no /bin/sh or curl) - smoke-check probes /api/v4/system/ping.
 
 networks:
   self-hosted:

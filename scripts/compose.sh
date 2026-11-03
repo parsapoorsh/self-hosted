@@ -44,7 +44,7 @@ require_domain_cert() {
   exit 1
 }
 
-# Landing pages (nginx serves static/ for apex / www). Gitignored — build if missing.
+# Landing pages (nginx serves static/ for apex / www). Gitignored - build if missing.
 ensure_static() {
   if [[ -f "${ROOT}/static/index.html" ]]; then
     return 0
@@ -107,7 +107,7 @@ ensure_app_dbs() {
     sleep 2
   done
   if ! "${COMPOSE[@]}" exec -T postgres pg_isready -U postgres -d postgres >/dev/null 2>&1; then
-    echo "compose: postgres not ready — skip app DB ensure" >&2
+    echo "compose: postgres not ready - skip app DB ensure" >&2
     return 1
   fi
 

@@ -1,4 +1,4 @@
-"""^^text^^ → brown <font> for third-party wording."""
+"""^^text^^ -> brown <font> for third-party wording."""
 
 from __future__ import annotations
 

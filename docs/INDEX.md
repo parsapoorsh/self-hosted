@@ -1,6 +1,6 @@
 ---
 title: ${domain}
-page_title: Self-hosted · ${domain}
+page_title: Self-hosted * ${domain}
 ---
 
 <md-center>
@@ -8,7 +8,7 @@ page_title: Self-hosted · ${domain}
 
 # Self-hosted on **${domain}**
 
-Authelia SSO · Nextcloud · Mattermost · Nexspence package mirrors · Kiwix
+Authelia SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 </md-center>
 
 ---

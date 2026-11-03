@@ -2,7 +2,7 @@
 # One leaf cert for the whole localhost tree (not one cert per subdomain):
 #
 #   cert/localhost/
-#     ca.pem / ca.key     local CA (trust this once — see trust-localhost-ca.sh)
+#     ca.pem / ca.key     local CA (trust this once - see trust-localhost-ca.sh)
 #     cert.pem            leaf CN=localhost
 #     fullchain.pem       leaf + ca
 #     privkey.pem

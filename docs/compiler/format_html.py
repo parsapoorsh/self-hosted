@@ -21,7 +21,7 @@ PRE_PLACEHOLDER = "<!--DJB_PRE_{}-->"
 
 def prettify_html(html: str) -> str:
     """Indent markup with tabs; keep fenced/pre text HTML-escaped."""
-    # Stash <pre>…</pre> before parse so a broken tree cannot eat fence bodies.
+    # Stash <pre>...</pre> before parse so a broken tree cannot eat fence bodies.
     pres: list[str] = []
 
     def stash(match: re.Match[str]) -> str:
@@ -50,7 +50,7 @@ def prettify_html(html: str) -> str:
 
 
 def _serialize_pre_escaped(pre_html: str) -> str:
-    """Return a <pre>…</pre> fragment with all text content escaped."""
+    """Return a <pre>...</pre> fragment with all text content escaped."""
     soup = BeautifulSoup(pre_html, "html.parser")
     pre = soup.find("pre")
     if pre is None:
