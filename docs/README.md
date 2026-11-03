@@ -1,3 +1,7 @@
+---
+title: README.md
+---
+
 # self-hosted
 
 Docker Compose stack behind nginx: **Authelia** (SSO), **Nextcloud**, **Nexus Repository**, **Kiwix**, and a small landing page. One human admin account is shared across the apps.

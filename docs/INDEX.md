@@ -15,10 +15,10 @@ My Self-Hosted Things
 ---
 <md-center>
 
-OAUTH: [HERE](auth.localhost)
+APT: [HERE](/apt.html)
 
-nextcloud: [HERE](cloud.localhost)
+nexus: [HERE](/nexus.html)
 
-Kiwix Library: [HERE](kiwix.localhost)
+README: [HERE](/readme.html)
 
 </md-center>

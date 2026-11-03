@@ -1,3 +1,7 @@
+---
+title: APT Mirror
+---
+
 # APT via Nexus (merged group)
 
 One base URL for Ubuntu, Debian, and Kali. The **suite** on the `deb` line chooses the release (`jammy`, `bookworm`, `kali-rolling`, …). Indexes are merged from several Nexus apt proxies, re-signed with a local group key, and served by the **apt-group** sidecar.

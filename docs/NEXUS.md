@@ -1,3 +1,7 @@
+---
+title: Nexus Mirror
+---
+
 # Point package clients at Nexus
 
 Replace the default upstream (crates.io, PyPI, Docker Hub, …) with this stack’s Nexus group repos. Catalog is `nexus/catalog.json`; bootstrap creates the groups on every start.
