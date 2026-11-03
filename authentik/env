@@ -1,6 +1,3 @@
-# Authentik constants (secrets + public URL from compose).
-AUTHENTIK_LISTEN__HTTP=0.0.0.0:9000
-AUTHENTIK_LISTEN__HTTPS=0.0.0.0:9443
+# Authentik constants (secrets from compose). Keep minimal for 2026.x.
 AUTHENTIK_ERROR_REPORTING__ENABLED=false
 AUTHENTIK_DISABLE_STARTUP_ANALYTICS=true
-AUTHENTIK_DISABLE_UPDATE_CHECK=true

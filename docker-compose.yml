@@ -125,6 +125,8 @@ services:
     restart: unless-stopped
 
   # Authentik IdP (OIDC + self-registration). Public host is auth.${DOMAIN}.
+  # 2026.x needs large /dev/shm (gunicorn socket). Do not set AUTHENTIK_HOST to a
+  # full URL - that overwrites listen hostname. Public URL = reverse-proxy Host.
   authentik:
     image: ghcr.io/goauthentik/server:2026.8.5
     command: server
@@ -139,9 +141,6 @@ services:
       AUTHENTIK_BOOTSTRAP_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN}
       AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTH_ADMIN_EMAIL:-${KEYCLOAK_ADMIN:-admin}@${DOMAIN:-example.com}}
-      # Public URL used in emails / some redirects (port-aware).
-      AUTHENTIK_HOST: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
-      AUTHENTIK_HOST_BROWSER: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       # Blueprint env for OIDC client secrets + redirect hosts
       DOMAIN: ${DOMAIN:-example.com}
       HTTPS_PORT_SUFFIX: ${HTTPS_PORT_SUFFIX:-}
@@ -149,7 +148,7 @@ services:
       MIRROR_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
       MATTERMOST_OIDC_CLIENT_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
     volumes:
-      - authentik_media:/media
+      - authentik_data:/data
       - authentik_templates:/templates
       - ./authentik/blueprints:/blueprints/custom:ro
     depends_on:
@@ -157,18 +156,15 @@ services:
         condition: service_healthy
     networks:
       - self-hosted
-    mem_limit: 768m
+    # Required by 2026.x (gunicorn listens on /dev/shm/*.sock).
+    shm_size: 512mb
     restart: unless-stopped
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/-/health/ready/', timeout=5)"
-          || exit 1
-      interval: 10s
-      timeout: 8s
-      retries: 18
-      start_period: 60s
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 180s
 
   authentik-worker:
     image: ghcr.io/goauthentik/server:2026.8.5
@@ -182,30 +178,29 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTH_DB_PASSWORD}
-      AUTHENTIK_BOOTSTRAP_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN}
-      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTH_ADMIN_EMAIL:-${KEYCLOAK_ADMIN:-admin}@${DOMAIN:-example.com}}
-      AUTHENTIK_HOST: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
-      AUTHENTIK_HOST_BROWSER: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       DOMAIN: ${DOMAIN:-example.com}
       HTTPS_PORT_SUFFIX: ${HTTPS_PORT_SUFFIX:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       MIRROR_OIDC_CLIENT_SECRET: ${MIRROR_OIDC_CLIENT_SECRET}
       MATTERMOST_OIDC_CLIENT_SECRET: ${MATTERMOST_OIDC_CLIENT_SECRET}
     volumes:
-      - authentik_media:/media
+      - authentik_data:/data
       - authentik_templates:/templates
       - authentik_certs:/certs
       - ./authentik/blueprints:/blueprints/custom:ro
     depends_on:
       postgres:
         condition: service_healthy
-      authentik:
-        condition: service_started
     networks:
       - self-hosted
-    mem_limit: 512m
+    shm_size: 512mb
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 180s
 
   # Package registry (Nexus-compatible API). Public host is mirror.${DOMAIN}.
   nexspence:
@@ -320,7 +315,7 @@ volumes:
   nextcloud_html:
   nexspence_blobs:
   nexspence_secrets:
-  authentik_media:
+  authentik_data:
   authentik_templates:
   authentik_certs:
   mattermost_config:

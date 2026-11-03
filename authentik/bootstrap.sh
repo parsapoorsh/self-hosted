@@ -15,6 +15,15 @@ set +a
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?}"
 ADMIN_EMAIL="${AUTH_ADMIN_EMAIL:-${ADMIN_USER}@${DOMAIN:-example.com}}"
+DOMAIN="${DOMAIN:-example.com}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
+HTTPS_PORT_SUFFIX="${HTTPS_PORT_SUFFIX:-}"
+if [[ -z "${HTTPS_PORT_SUFFIX}" && "${HTTPS_PORT}" != "443" ]]; then
+  HTTPS_PORT_SUFFIX=":${HTTPS_PORT}"
+fi
+# Public portal URL (tenant base_url). Required in Authentik 2026.x.
+AUTH_BASE_URL="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
+AUTH_HOST="auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
 echo "authentik-bootstrap: waiting for healthy authentik..."
@@ -61,6 +70,53 @@ if group is not None:
     group.users.add(user)
 
 print(f"authentik-bootstrap: user={username} created={created} pk={user.pk}")
+'
+
+# Tenant base_url + brand domain (fixes "base URL has not been configured").
+echo "authentik-bootstrap: base_url=${AUTH_BASE_URL}"
+"${COMPOSE[@]}" exec -T \
+  -e AUTH_BASE_URL="${AUTH_BASE_URL}" \
+  -e AUTH_HOST="${AUTH_HOST}" \
+  authentik ak shell -c '
+import os
+from authentik.tenants.models import Tenant
+from authentik.brands.models import Brand
+
+base = os.environ["AUTH_BASE_URL"]
+host = os.environ["AUTH_HOST"]
+
+t = Tenant.objects.get(schema_name="public")
+t.base_url = base
+flags = dict(t.flags or {})
+flags["setup"] = False
+t.flags = flags
+t.save()
+
+# Default brand matches public Host (with non-default port when set).
+b = Brand.objects.get(default=True)
+b.domain = host
+b.save()
+
+# Local TLS brand for auth.localhost (and :port).
+local_host = "auth.localhost"
+if ":" in host:
+    local_host = "auth.localhost:" + host.split(":", 1)[1]
+lb, created = Brand.objects.get_or_create(
+    domain=local_host,
+    defaults={
+        "default": False,
+        "branding_title": b.branding_title,
+        "flow_authentication": b.flow_authentication,
+        "flow_invalidation": b.flow_invalidation,
+        "flow_user_settings": b.flow_user_settings,
+    },
+)
+if not created:
+    lb.flow_authentication = b.flow_authentication
+    lb.flow_invalidation = b.flow_invalidation
+    lb.flow_user_settings = b.flow_user_settings
+    lb.save()
+print(f"base_url={t.base_url} brand={b.domain} local_brand={lb.domain}")
 '
 
 # Wait for custom blueprints (OIDC apps) to apply.

@@ -23,6 +23,7 @@ fi
 
 # Per-app Authentik issuer discovery (public HTTPS edge).
 DISCOVERY="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}/application/o/nextcloud/.well-known/openid-configuration"
+# 2026.x still serves readiness on this path via the edge listener.
 HEALTH_INTERNAL="http://authentik:9000/-/health/ready/"
 
 if ! ${OCC} status 2>/dev/null | grep -q 'installed: true'; then
