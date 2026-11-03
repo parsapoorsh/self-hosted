@@ -199,4 +199,84 @@ for p in OAuth2Provider.objects.all():
 print("admins group ready")
 '
 
+# Open self-registration (username + password + name + email) + Sign up on login.
+echo "authentik-bootstrap: ensuring enrollment (self-signup)"
+"${COMPOSE[@]}" exec -T authentik ak shell -c '
+from authentik.flows.models import (
+    Flow,
+    FlowDesignation,
+    FlowAuthenticationRequirement,
+    FlowStageBinding,
+)
+from authentik.stages.prompt.models import Prompt, PromptStage, FieldTypes
+from authentik.stages.user_write.models import UserWriteStage, UserCreationMode
+from authentik.stages.user_login.models import UserLoginStage
+from authentik.stages.identification.models import IdentificationStage
+
+def ensure_prompt(name, key, label, ftype, order=0):
+    p, _ = Prompt.objects.update_or_create(
+        name=name,
+        defaults={
+            "field_key": key,
+            "label": label,
+            "type": ftype,
+            "required": True,
+            "placeholder": label,
+            "placeholder_expression": False,
+            "order": order,
+        },
+    )
+    return p
+
+p_user = ensure_prompt(
+    "self-hosted-enrollment-field-username", "username", "Username", FieldTypes.USERNAME, 0
+)
+p_pass = ensure_prompt(
+    "self-hosted-enrollment-field-password", "password", "Password", FieldTypes.PASSWORD, 0
+)
+p_pass2 = ensure_prompt(
+    "self-hosted-enrollment-field-password-repeat",
+    "password_repeat",
+    "Password (repeat)",
+    FieldTypes.PASSWORD,
+    1,
+)
+p_name = ensure_prompt(
+    "self-hosted-enrollment-field-name", "name", "Name", FieldTypes.TEXT, 0
+)
+p_email = ensure_prompt(
+    "self-hosted-enrollment-field-email", "email", "Email", FieldTypes.EMAIL, 1
+)
+
+ps1, _ = PromptStage.objects.update_or_create(name="self-hosted-enrollment-prompt-first")
+ps1.fields.set([p_user, p_pass, p_pass2])
+ps2, _ = PromptStage.objects.update_or_create(name="self-hosted-enrollment-prompt-second")
+ps2.fields.set([p_name, p_email])
+
+uw, _ = UserWriteStage.objects.update_or_create(
+    name="self-hosted-enrollment-user-write",
+    defaults={"user_creation_mode": UserCreationMode.ALWAYS_CREATE},
+)
+ul, _ = UserLoginStage.objects.update_or_create(name="self-hosted-enrollment-user-login")
+
+flow, _ = Flow.objects.update_or_create(
+    slug="default-enrollment-flow",
+    defaults={
+        "name": "Self-hosted enrollment",
+        "title": "Create an account",
+        "designation": FlowDesignation.ENROLLMENT,
+        "authentication": FlowAuthenticationRequirement.REQUIRE_UNAUTHENTICATED,
+    },
+)
+FlowStageBinding.objects.filter(target=flow).delete()
+for order, stage in ((10, ps1), (11, ps2), (20, uw), (100, ul)):
+    FlowStageBinding.objects.create(target=flow, stage=stage, order=order)
+
+ident = IdentificationStage.objects.get(name="default-authentication-identification")
+ident.user_fields = ["username", "email"]
+ident.enrollment_flow = flow
+ident.save()
+print("signup ready: /if/flow/default-enrollment-flow/")
+'
+
 echo "authentik-bootstrap: done"
