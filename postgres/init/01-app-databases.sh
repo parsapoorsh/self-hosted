@@ -51,5 +51,6 @@ create_app_db() {
 }
 
 # --- app databases ---
-# Nextcloud (Authelia uses local sqlite under authelia_data)
 create_app_db nextcloud nextcloud "${NEXTCLOUD_DB_PASSWORD:-}"
+create_app_db authelia authelia "${AUTH_DB_PASSWORD:-}"
+create_app_db mattermost mattermost "${MATTERMOST_DB_PASSWORD:-}"
