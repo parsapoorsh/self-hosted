@@ -186,6 +186,26 @@ else
   bad "mattermost container IP"
 fi
 
+# Nextcloud: login page must expose Authelia as alternative OIDC login.
+code="$(curl -sk -o /tmp/nc-login-smoke.html -w '%{http_code}' --max-time 15 \
+  -H "Host: cloud.localhost" "https://127.0.0.1/login" || echo 000)"
+if [[ "${code}" == "200" ]]; then
+  alts="$(python3 - <<'PY'
+import base64, json, re, sys
+html = open("/tmp/nc-login-smoke.html").read()
+m = re.search(r'id="initial-state-core-countAlternativeLogins" value="([^"]+)"', html)
+print(base64.b64decode(m.group(1)).decode() if m else "0")
+PY
+)"
+  if [[ "${alts}" != "0" && "${alts}" != "" ]]; then
+    ok "nextcloud OIDC alternative logins count=${alts}"
+  else
+    bad "nextcloud OIDC alternative logins count=${alts} (Authelia button missing)"
+  fi
+else
+  bad "nextcloud login page HTTP ${code}"
+fi
+
 if [[ "${fail}" -ne 0 ]]; then
   echo "smoke: FAILED" >&2
   exit 1
