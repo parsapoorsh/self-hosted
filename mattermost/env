@@ -25,6 +25,8 @@ MM_TEAMSETTINGS_ENABLEOPENSERVER=true
 MM_TEAMSETTINGS_ENABLEUSERCREATION=true
 # Default org / site branding (also seeded as team "okbrb" by mattermost/bootstrap.sh).
 MM_TEAMSETTINGS_SITENAME=okbrb
+# Only Town Square as default; empty list would also create Off-Topic.
+MM_TEAMSETTINGS_EXPERIMENTALDEFAULTCHANNELS=town-square
 # Skip first-admin wizard ("organization name", "What tools do you use?", invites).
 MM_SERVICESETTINGS_ENABLEONBOARDINGFLOW=false
 # Skip the in-app first-run channel tutorial tips.

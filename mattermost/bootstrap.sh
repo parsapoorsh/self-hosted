@@ -2,6 +2,7 @@
 # Idempotent Mattermost post-start setup (host-side; image has no shell):
 #   - mark first-admin onboarding complete (skip org / tools wizard)
 #   - set OrganizationName + ensure public team "okbrb"
+#   - remove default Off-Topic channel (only Town Square)
 #   - add existing non-bot users to that team
 #
 # Called from compose.sh after `up -d`. Safe to re-run.
@@ -84,6 +85,18 @@ ensure_team() {
   " >/dev/null
 }
 
+# ExperimentalDefaultChannels=town-square skips Off-Topic on new teams; clean
+# up any that already exist (team create still used the old defaults once).
+remove_off_topic() {
+  local channels
+  channels="$(mmctl channel list "${ORG_NAME}" 2>/dev/null || true)"
+  if ! grep -qx 'off-topic' <<<"${channels}"; then
+    return 0
+  fi
+  log "deleting ${ORG_NAME}:off-topic"
+  mmctl channel delete --confirm "${ORG_NAME}:off-topic" >/dev/null 2>&1 || true
+}
+
 # Bots ship with the server; only add human (and SSO) accounts.
 add_users_to_team() {
   local user
@@ -115,5 +128,6 @@ fi
 wait_mattermost
 ensure_systems
 ensure_team
+remove_off_topic
 add_users_to_team
 log "done"
