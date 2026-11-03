@@ -4,17 +4,16 @@ TZ=UTC
 MM_SQLSETTINGS_DRIVERNAME=postgres
 MM_BLEVESETTINGS_INDEXDIR=/mattermost/bleve-indexes
 
-# GitLab SSO pointed at Authelia (see Authelia Mattermost OIDC docs).
+# GitLab SSO pointed at Authentik OIDC.
 MM_GITLABSETTINGS_ENABLE=true
-MM_GITLABSETTINGS_BUTTONTEXT=Log in with Authelia
+MM_GITLABSETTINGS_BUTTONTEXT=Log in with Authentik
 MM_GITLABSETTINGS_BUTTONCOLOR=#000000
-# openid -> enterprise OpenID provider (username from preferred_username or
-# email local-part). Authelia mattermost scope remaps admin email -> sysadmin@.
-MM_GITLABSETTINGS_SCOPE=openid mattermost
+# profile+email so userinfo includes username/email (GitLab-shaped claims).
+MM_GITLABSETTINGS_SCOPE=openid profile email
 # AllowedUntrustedInternalConnections set in compose (auth.${DOMAIN} -> nginx).
 
-# Authelia-only auth: no local email/username create-account or password login.
-# EnableUserCreation stays true so first Authelia login can create the MM user.
+# SSO-only auth: no local email/username create-account or password login.
+# EnableUserCreation stays true so first SSO login can create the MM user.
 MM_SERVICESETTINGS_ENABLESECURITYFIXALERT=false
 MM_EMAILSETTINGS_ENABLESIGNUPWITHEMAIL=false
 MM_EMAILSETTINGS_ENABLESIGNINWITHEMAIL=false

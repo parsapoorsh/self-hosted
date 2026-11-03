@@ -6,5 +6,5 @@ REDIS_HOST=redis
 OVERWRITEPROTOCOL=https
 # Trust docker/edge so X-Forwarded-Proto from nginx is honored.
 TRUSTED_PROXIES=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
-OIDC_PROVIDER_ID=Authelia
+OIDC_PROVIDER_ID=Authentik
 OIDC_CLIENT_ID=nextcloud

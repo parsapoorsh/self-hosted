@@ -81,4 +81,38 @@ print("ok" if need.issubset(ids) else f"missing={need-ids}")
   sleep 3
 done
 
+# Ensure RS256 signing keys (Nextcloud/Nexspence reject HS256) + GitLab username claim.
+echo "authentik-bootstrap: ensuring RS256 signing keys"
+"${COMPOSE[@]}" exec -T authentik ak shell -c '
+from authentik.crypto.models import CertificateKeyPair
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
+
+cert = CertificateKeyPair.objects.filter(name__icontains="Self-signed").first()
+if cert is None:
+    cert = CertificateKeyPair.objects.filter(name__icontains="JWT").first()
+if cert is None:
+    raise SystemExit("no signing certificate found")
+
+sm, _ = ScopeMapping.objects.get_or_create(
+    managed="goauthentik.io/providers/oauth2/scope-username-gitlab",
+    defaults={
+        "name": "Authentik self-hosted GitLab username",
+        "scope_name": "profile",
+        "description": "Expose username for Mattermost GitLab OIDC",
+        "expression": "return {\"username\": request.user.username, \"preferred_username\": request.user.username}",
+    },
+)
+std = list(ScopeMapping.objects.filter(managed__in=[
+    "goauthentik.io/providers/oauth2/scope-openid",
+    "goauthentik.io/providers/oauth2/scope-email",
+    "goauthentik.io/providers/oauth2/scope-profile",
+]))
+for p in OAuth2Provider.objects.all():
+    p.signing_key = cert
+    p.include_claims_in_id_token = True
+    p.save()
+    p.property_mappings.set(std + [sm])
+print("signing_key=%s providers=%s" % (cert.name, OAuth2Provider.objects.count()))
+'
+
 echo "authentik-bootstrap: done"

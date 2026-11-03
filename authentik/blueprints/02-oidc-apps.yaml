@@ -1,5 +1,6 @@
 # OIDC applications for Nextcloud, Nexspence (mirror), Mattermost.
 # Client secrets and redirect host come from env on the Authentik worker.
+# RS256 signing_key is required (Nextcloud/Nexspence reject HS256).
 version: 1
 metadata:
   name: self-hosted - OIDC apps
@@ -14,6 +15,22 @@ entries:
       identifiers:
         name: Default - Provider invalidation flow
       required: false
+
+  # Mattermost GitLab OIDC expects a "username" claim (not only preferred_username).
+  - id: scope-username-gitlab
+    model: authentik_providers_oauth2.scopemapping
+    identifiers:
+      managed: goauthentik.io/providers/oauth2/scope-username-gitlab
+    attrs:
+      name: Authentik self-hosted GitLab username
+      managed: goauthentik.io/providers/oauth2/scope-username-gitlab
+      scope_name: profile
+      description: Expose username for Mattermost GitLab OIDC
+      expression: |
+        return {
+          "username": request.user.username,
+          "preferred_username": request.user.username,
+        }
 
   # --- Nextcloud ---
   - id: provider-nextcloud
@@ -31,6 +48,9 @@ entries:
       invalidation_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-invalidation-flow]
+      signing_key: !Find
+        - authentik_crypto.certificatekeypair
+        - [name, authentik Self-signed Certificate]
       property_mappings:
         - !Find
           - authentik_providers_oauth2.scopemapping
@@ -41,6 +61,7 @@ entries:
         - !Find
           - authentik_providers_oauth2.scopemapping
           - [managed, goauthentik.io/providers/oauth2/scope-profile]
+        - !KeyOf scope-username-gitlab
       sub_mode: user_username
       include_claims_in_id_token: true
       issuer_mode: per_provider
@@ -90,6 +111,9 @@ entries:
       invalidation_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-invalidation-flow]
+      signing_key: !Find
+        - authentik_crypto.certificatekeypair
+        - [name, authentik Self-signed Certificate]
       property_mappings:
         - !Find
           - authentik_providers_oauth2.scopemapping
@@ -100,6 +124,7 @@ entries:
         - !Find
           - authentik_providers_oauth2.scopemapping
           - [managed, goauthentik.io/providers/oauth2/scope-profile]
+        - !KeyOf scope-username-gitlab
       sub_mode: user_username
       include_claims_in_id_token: true
       issuer_mode: per_provider
@@ -140,6 +165,9 @@ entries:
       invalidation_flow: !Find
         - authentik_flows.flow
         - [slug, default-provider-invalidation-flow]
+      signing_key: !Find
+        - authentik_crypto.certificatekeypair
+        - [name, authentik Self-signed Certificate]
       property_mappings:
         - !Find
           - authentik_providers_oauth2.scopemapping
@@ -150,6 +178,7 @@ entries:
         - !Find
           - authentik_providers_oauth2.scopemapping
           - [managed, goauthentik.io/providers/oauth2/scope-profile]
+        - !KeyOf scope-username-gitlab
       sub_mode: user_username
       include_claims_in_id_token: true
       issuer_mode: per_provider
