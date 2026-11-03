@@ -33,8 +33,6 @@ Authelia SSO · Nextcloud · Mattermost · Nexspence package mirrors · Kiwix
 | [https://mirror.${domain}](https://mirror.${domain}/) | Nexspence UI + package APIs |
 | [https://kiwix.${domain}](https://kiwix.${domain}/) | Kiwix |
 
-HTTP on these names redirects to HTTPS. Package clients use **https://mirror.${domain}** (no Authelia on `/repository/` and `/v2/`).
-
 ---
 
 ## Quick links
