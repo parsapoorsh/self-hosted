@@ -83,7 +83,7 @@ DNS.2 = *.localhost
 DNS.3 = www.localhost
 DNS.4 = auth.localhost
 DNS.5 = cloud.localhost
-DNS.6 = nexus.localhost
+DNS.6 = mirror.localhost
 DNS.7 = kiwix.localhost
 DNS.8 = mattermost.localhost
 IP.1 = 127.0.0.1
@@ -117,11 +117,6 @@ map \$host \$edge_cert_dir_http {
     default                 ${CERTS}/${DOMAIN};
     localhost               ${CERTS}/localhost;
     ~\\.localhost\$          ${CERTS}/localhost;
-}
-map \$host \$nexus_oauth2_upstream {
-    default                 http://nexus-oauth2-proxy:4180;
-    nexus.localhost         http://nexus-oauth2-local:4180;
-    ~^nexus\\.localhost\$    http://nexus-oauth2-local:4180;
 }
 EOF
 

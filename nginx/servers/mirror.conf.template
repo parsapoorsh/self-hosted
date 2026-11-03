@@ -1,0 +1,20 @@
+# Edge: package registry (Nexspence behind mirror.* hostname).
+# UI SSO is native OIDC to Authelia; package APIs use basic auth / anonymous.
+# mirror.localhost HTTP -> HTTPS (00-localhost-redirect).
+
+# TEMPORARY: HTTP -> HTTPS for public hosts.
+server {
+    listen 80;
+    server_name mirror.__DOMAIN__;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name mirror.__DOMAIN__ mirror.localhost;
+
+    include /etc/nginx/self-hosted/snippets/edge-tls.conf;
+    include /etc/nginx/self-hosted/cloudflare.conf;
+    include /etc/nginx/self-hosted/snippets/mirror-locations.conf;
+}
