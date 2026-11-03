@@ -228,6 +228,8 @@ composer install
 
 ## APT (Debian / Ubuntu / Kali)
 
+Full client guide: **[APT.md](APT.md)**.
+
 Merged group (apt-group sidecar): `apt` → `${NEXUS}/repository/apt/`
 
 One base URL; pick the suite on the `deb` line. Architectures published: **amd64**, **i386**. Metadata is the **union of versions** across Nexus apt proxies (downgrades still possible while a member has the old build). Indexes are re-signed with the group key.
