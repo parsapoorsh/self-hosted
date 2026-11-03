@@ -153,6 +153,35 @@ ensure_app_dbs() {
   fi
 }
 
+# Nexspence bootstrap creates source=local admin. OIDC JIT then fails with
+# "username conflict". Flip shared admin to source=oidc (external_id=username
+# matches Authelia preferred_username / sub). Password basic-auth still works.
+link_nexspence_admin_oidc() {
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
+  local user="${KEYCLOAK_ADMIN:-admin}"
+  local email="${user}@${DOMAIN:-localhost}"
+  local out
+  out="$("${COMPOSE[@]}" exec -T postgres \
+    psql -U nexspence -d nexspence -v ON_ERROR_STOP=1 -tAc \
+    "UPDATE users
+     SET source = 'oidc',
+         external_id = '${user}',
+         email = COALESCE(NULLIF(email, ''), '${email}'),
+         updated_at = now()
+     WHERE username = '${user}'
+       AND source = 'local'
+     RETURNING username || ':' || source;" 2>/dev/null || true)"
+  out="$(echo "${out}" | tr -d '[:space:]')"
+  if [[ -n "${out}" ]]; then
+    echo "compose: nexspence linked ${out}"
+  else
+    echo "compose: nexspence admin already oidc or missing (user=${user})"
+  fi
+}
+
 status=0
 if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
   # Bring postgres up first so Authelia/Mattermost DB roles exist before they start.
@@ -164,6 +193,10 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
   if [[ "${status}" -eq 0 ]]; then
     "${COMPOSE[@]}" "$@"
     status=$?
+  fi
+  if [[ "${status}" -eq 0 ]]; then
+    echo "compose: link nexspence admin to OIDC source..."
+    link_nexspence_admin_oidc || true
   fi
   if [[ "${status}" -eq 0 ]]; then
     echo "compose: mattermost bootstrap (org/team defaults)..."

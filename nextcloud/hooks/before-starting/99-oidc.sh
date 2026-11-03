@@ -1,7 +1,8 @@
 #!/bin/sh
 # Trusted domains + user_oidc against Authelia. Idempotent.
 # Nextcloud image runs hooks with /bin/sh - keep POSIX (no bash arrays).
-set -eu
+# Must not exit non-zero: a failing before-starting hook crash-loops the container.
+set -u
 
 OCC="php /var/www/html/occ"
 DOMAIN="${DOMAIN:-example.com}"
@@ -9,6 +10,9 @@ HTTPS_PORT="${HTTPS_PORT:-443}"
 CLIENT_ID="${OIDC_CLIENT_ID:-nextcloud}"
 CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
 PROVIDER_ID="${OIDC_PROVIDER_ID:-Authelia}"
+# Packaged release (includes vendor/). Override with USER_OIDC_URL if needed.
+USER_OIDC_URL="${USER_OIDC_URL:-https://github.com/nextcloud-releases/user_oidc/releases/download/v8.12.0/user_oidc-v8.12.0.tar.gz}"
+CUSTOM_APPS="/var/www/html/custom_apps"
 
 if [ -z "${CLIENT_SECRET}" ]; then
   echo "oidc-hook: OIDC_CLIENT_SECRET empty - skip"
@@ -32,30 +36,30 @@ if ! ${OCC} status 2>/dev/null | grep -q 'installed: true'; then
   exit 0
 fi
 
-${OCC} config:system:set allow_local_remote_servers --type=boolean --value=true >/dev/null
+${OCC} config:system:set allow_local_remote_servers --type=boolean --value=true >/dev/null || true
 
 # Both public names. Do not force overwritehost - Host header must win so
 # cloud.localhost stays on localhost (otherwise redirects to cloud.<DOMAIN>).
 # overwriteprotocol comes from OVERWRITEPROTOCOL env (https via compose).
-${OCC} config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null
-${OCC} config:system:set trusted_domains 1 --value="cloud.localhost" >/dev/null
+${OCC} config:system:set trusted_domains 0 --value="cloud.${DOMAIN}" >/dev/null || true
+${OCC} config:system:set trusted_domains 1 --value="cloud.localhost" >/dev/null || true
 ${OCC} config:system:delete overwritehost >/dev/null 2>&1 || true
 ${OCC} config:system:set overwrite.cli.url \
-  --value="https://cloud.${DOMAIN}${HTTPS_PORT_SUFFIX}" >/dev/null
+  --value="https://cloud.${DOMAIN}${HTTPS_PORT_SUFFIX}" >/dev/null || true
 
 # Drive-like surface: Files + Office/Text/Viewer. Drop social/groupware noise.
 # No sample personal files; no Leon Green / leon@example.com contact.
-${OCC} config:system:set skeletondirectory --value='' >/dev/null
-${OCC} config:app:set dav enableDefaultContact --value=no >/dev/null
+${OCC} config:system:set skeletondirectory --value='' >/dev/null || true
+${OCC} config:app:set dav enableDefaultContact --value=no >/dev/null || true
 
 # Start at Files, not Dashboard.
-${OCC} config:system:set defaultapp --value='files' >/dev/null
-${OCC} config:app:set core defaultapp --value='files' >/dev/null
+${OCC} config:system:set defaultapp --value='files' >/dev/null || true
+${OCC} config:app:set core defaultapp --value='files' >/dev/null || true
 
-# No App Store / web upgrades (install apps only via image or occ on the host).
-${OCC} config:system:set appstoreenabled --type=boolean --value=false >/dev/null
-${OCC} config:system:set updatechecker --type=boolean --value=false >/dev/null
-${OCC} config:system:set upgrade.disable-web --type=boolean --value=true >/dev/null
+# No App Store / web upgrades (install apps only via image, mount, or this hook).
+${OCC} config:system:set appstoreenabled --type=boolean --value=false >/dev/null || true
+${OCC} config:system:set updatechecker --type=boolean --value=false >/dev/null || true
+${OCC} config:system:set upgrade.disable-web --type=boolean --value=true >/dev/null || true
 
 # Best-effort disable; some ship as always-on (appstore, profile, dav, files, …).
 for app in \
@@ -68,10 +72,42 @@ do
   ${OCC} app:disable "${app}" >/dev/null 2>&1 || true
 done
 
+# Ensure user_oidc is present. App Store is off, so install from GitHub release
+# into custom_apps when missing.
+ensure_user_oidc() {
+  if ${OCC} app:list 2>/dev/null | grep -q 'user_oidc'; then
+    ${OCC} app:enable user_oidc >/dev/null 2>&1 || true
+    return 0
+  fi
+  if [ -f "${CUSTOM_APPS}/user_oidc/appinfo/info.xml" ]; then
+    echo "oidc-hook: enabling mounted user_oidc"
+    ${OCC} app:enable user_oidc >/dev/null 2>&1 || true
+    return 0
+  fi
+  echo "oidc-hook: downloading user_oidc from ${USER_OIDC_URL}"
+  mkdir -p "${CUSTOM_APPS}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "${USER_OIDC_URL}" -o /tmp/user_oidc.tar.gz || return 1
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O /tmp/user_oidc.tar.gz "${USER_OIDC_URL}" || return 1
+  else
+    echo "oidc-hook: no curl/wget - cannot fetch user_oidc" >&2
+    return 1
+  fi
+  tar -xzf /tmp/user_oidc.tar.gz -C "${CUSTOM_APPS}" || return 1
+  rm -f /tmp/user_oidc.tar.gz
+  chown -R www-data:www-data "${CUSTOM_APPS}/user_oidc" 2>/dev/null || true
+  ${OCC} app:enable user_oidc >/dev/null 2>&1 || true
+}
+
+if ! ensure_user_oidc; then
+  echo "oidc-hook: user_oidc missing - skip OIDC provider config (container still starts)" >&2
+  exit 0
+fi
+
 if ! ${OCC} app:list --enabled 2>/dev/null | grep -q 'user_oidc'; then
-  echo "oidc-hook: installing user_oidc"
-  ${OCC} app:install user_oidc 2>/dev/null || true
-  ${OCC} app:enable user_oidc || true
+  echo "oidc-hook: user_oidc not enabled - skip provider config" >&2
+  exit 0
 fi
 
 echo "oidc-hook: waiting for Authelia ${HEALTH_INTERNAL}"
@@ -89,7 +125,7 @@ while [ "$i" -le 60 ]; do
 done
 
 echo "oidc-hook: configuring provider '${PROVIDER_ID}'"
-${OCC} user_oidc:provider "${PROVIDER_ID}" \
+if ! ${OCC} user_oidc:provider "${PROVIDER_ID}" \
   --clientid="${CLIENT_ID}" \
   --clientsecret="${CLIENT_SECRET}" \
   --discoveryuri="${DISCOVERY}" \
@@ -99,12 +135,19 @@ ${OCC} user_oidc:provider "${PROVIDER_ID}" \
   --mapping-display-name=name \
   --mapping-email=email \
   >/dev/null
-
-# Drop legacy Keycloak provider name if present (migration).
-if [ "${PROVIDER_ID}" != "Keycloak" ]; then
-  ${OCC} user_oidc:provider:delete Keycloak 2>/dev/null || true
+then
+  echo "oidc-hook: provider configure failed - will retry next start" >&2
+  exit 0
 fi
 
-${OCC} config:app:set user_oidc allow_multiple_user_backends --value=1 >/dev/null
+# Drop legacy IdP provider names if present (migration).
+for legacy in Keycloak Authentik; do
+  if [ "${PROVIDER_ID}" != "${legacy}" ]; then
+    ${OCC} user_oidc:provider:delete "${legacy}" --force 2>/dev/null || true
+  fi
+done
+
+${OCC} config:app:set user_oidc allow_multiple_user_backends --value=1 >/dev/null || true
 ${OCC} config:app:delete user_oidc allow_insecure_http >/dev/null 2>&1 || true
 echo "oidc-hook: provider ready (trusted=cloud.${DOMAIN},cloud.localhost)"
+exit 0
