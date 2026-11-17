@@ -73,6 +73,22 @@ print(f"authentik-bootstrap: user={username} created={created} pk={user.pk}")
 '
 
 # Tenant base_url + brand domain (fixes "base URL has not been configured").
+# The default brand is created by an Authentik blueprint; on a cold volume it
+# can land after the health check, so wait for it before patching.
+echo "authentik-bootstrap: waiting for default brand..."
+for i in $(seq 1 60); do
+  if "${COMPOSE[@]}" exec -T authentik ak shell -c '
+from authentik.brands.models import Brand
+raise SystemExit(0 if Brand.objects.filter(default=True).exists() else 1)
+' >/dev/null 2>&1; then
+    break
+  fi
+  if [[ "$i" -eq 60 ]]; then
+    echo "authentik-bootstrap: WARN default brand not found" >&2
+  fi
+  sleep 2
+done
+
 echo "authentik-bootstrap: base_url=${AUTH_BASE_URL}"
 "${COMPOSE[@]}" exec -T \
   -e AUTH_BASE_URL="${AUTH_BASE_URL}" \
