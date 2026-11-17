@@ -142,15 +142,31 @@ ensure_app_dbs() {
     return 1
   fi
 
+  # On a fresh volume postgres is briefly reachable while init scripts run and
+  # then restarts, so a single psql attempt can fail mid-connection.
+  ensure_app_db() {
+    local db="$1" user="$2" pass="$3" i
+    for i in $(seq 1 15); do
+      if ./scripts/pg-app-db.sh "${db}" "${user}" "${pass}" >/dev/null 2>&1; then
+        return 0
+      fi
+      sleep 2
+    done
+    echo "compose: could not ensure database ${db}" >&2
+    return 1
+  }
+
+  local rc=0
   if [[ -n "${AUTH_DB_PASSWORD:-}" ]]; then
-    ./scripts/pg-app-db.sh authentik authentik "${AUTH_DB_PASSWORD}"
+    ensure_app_db authentik authentik "${AUTH_DB_PASSWORD}" || rc=1
   fi
   if [[ -n "${MATTERMOST_DB_PASSWORD:-}" ]]; then
-    ./scripts/pg-app-db.sh mattermost mattermost "${MATTERMOST_DB_PASSWORD}"
+    ensure_app_db mattermost mattermost "${MATTERMOST_DB_PASSWORD}" || rc=1
   fi
   if [[ -n "${NEXSPENCE_DB_PASSWORD:-}" ]]; then
-    ./scripts/pg-app-db.sh nexspence nexspence "${NEXSPENCE_DB_PASSWORD}"
+    ensure_app_db nexspence nexspence "${NEXSPENCE_DB_PASSWORD}" || rc=1
   fi
+  return "${rc}"
 }
 
 # Nexspence bootstrap creates source=local admin. OIDC JIT then fails with
@@ -187,28 +203,28 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
   # Bring postgres up first so Authentik/Mattermost DB roles exist before they start.
   "${COMPOSE[@]}" up -d postgres
   status=$?
+  # Best effort: on a fresh volume postgres/init already creates the app DBs,
+  # so a failure here must not stop the stack from starting.
   if [[ "${status}" -eq 0 ]]; then
-    ensure_app_dbs || status=$?
+    ensure_app_dbs || echo "compose: WARN app DB ensure failed (continuing)" >&2
   fi
   if [[ "${status}" -eq 0 ]]; then
     "${COMPOSE[@]}" "$@"
     status=$?
   fi
+  # Each post-start step is independent: a slow IdP start must not skip the
+  # Mattermost team bootstrap or the smoke-check.
   if [[ "${status}" -eq 0 ]]; then
+    post_status=0
     echo "compose: authentik bootstrap (shared admin user)..."
-    ./authentik/bootstrap.sh || status=$?
-  fi
-  if [[ "${status}" -eq 0 ]]; then
+    ./authentik/bootstrap.sh || post_status=$?
     echo "compose: link nexspence admin to OIDC source..."
     link_nexspence_admin_oidc || true
-  fi
-  if [[ "${status}" -eq 0 ]]; then
     echo "compose: mattermost bootstrap (org/team defaults)..."
-    ./mattermost/bootstrap.sh || status=$?
-  fi
-  if [[ "${status}" -eq 0 ]]; then
+    ./mattermost/bootstrap.sh || post_status=$?
     echo "compose: running smoke-check (bootstraps can take a few minutes)..."
-    ./scripts/smoke-check.sh || status=$?
+    ./scripts/smoke-check.sh || post_status=$?
+    status="${post_status}"
   fi
 else
   "${COMPOSE[@]}" "$@"
