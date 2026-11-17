@@ -45,7 +45,8 @@ psql_mm() {
 wait_mattermost() {
   local i id ip code
   log "waiting for mattermost API"
-  for i in $(seq 1 60); do
+  # Cold start runs DB migrations; allow up to ~4 minutes.
+  for i in $(seq 1 120); do
     id="$("${COMPOSE[@]}" ps -q mattermost 2>/dev/null | head -1 || true)"
     if [[ -n "${id}" ]]; then
       ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${id}" 2>/dev/null || true)"

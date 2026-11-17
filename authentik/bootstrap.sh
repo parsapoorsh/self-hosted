@@ -26,14 +26,22 @@ AUTH_BASE_URL="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 AUTH_HOST="auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
 
-echo "authentik-bootstrap: waiting for healthy authentik..."
-for i in $(seq 1 90); do
-  st="$("${COMPOSE[@]}" ps authentik --format '{{.Status}}' 2>/dev/null | tail -1 || true)"
-  if [[ "${st}" == *healthy* ]]; then
+# Probe the Django app (DB + migrations + config), not just the health string:
+# on a cold volume the HTTP health check can pass briefly before `ak` works.
+echo "authentik-bootstrap: waiting for authentik..."
+ready=0
+for i in $(seq 1 150); do
+  if timeout 20 "${COMPOSE[@]}" exec -T authentik \
+    ak shell -c '1' >/dev/null 2>&1; then
+    ready=1
     break
   fi
   sleep 2
 done
+if [[ "${ready}" -ne 1 ]]; then
+  echo "authentik-bootstrap: authentik did not become ready" >&2
+  exit 1
+fi
 
 echo "authentik-bootstrap: upsert user ${ADMIN_USER}"
 "${COMPOSE[@]}" exec -T \
