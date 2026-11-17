@@ -53,6 +53,7 @@ entries:
       placeholder_expression: false
       order: 1
 
+  # Hidden display name: signup asks for the name once (the username).
   - identifiers:
       name: self-hosted-enrollment-field-name
     id: prompt-field-name
@@ -60,11 +61,25 @@ entries:
     attrs:
       field_key: name
       label: Name
-      type: text
-      required: true
-      placeholder: Name
+      type: hidden
+      required: false
+      # Hidden fields use their placeholder as the value sent by the client.
+      placeholder: ""
       placeholder_expression: false
-      order: 0
+      order: 2
+
+  # Copy the username into the display name before user_write runs.
+  - identifiers:
+      name: self-hosted-enrollment-name-from-username
+    id: policy-name-from-username
+    model: authentik_policies_expression.expressionpolicy
+    attrs:
+      name: self-hosted-enrollment-name-from-username
+      expression: |
+        prompt_data = request.context.get("prompt_data", {})
+        if not prompt_data.get("name"):
+            prompt_data["name"] = prompt_data.get("username", "")
+        return True
 
   - identifiers:
       name: self-hosted-enrollment-prompt-first
@@ -75,14 +90,9 @@ entries:
         - !KeyOf prompt-field-username
         - !KeyOf prompt-field-password
         - !KeyOf prompt-field-password-repeat
-
-  - identifiers:
-      name: self-hosted-enrollment-prompt-second
-    id: default-enrollment-prompt-second
-    model: authentik_stages_prompt.promptstage
-    attrs:
-      fields:
         - !KeyOf prompt-field-name
+      validation_policies:
+        - !KeyOf policy-name-from-username
 
   - identifiers:
       name: self-hosted-enrollment-user-write
@@ -103,12 +113,6 @@ entries:
       target: !KeyOf flow
       stage: !KeyOf default-enrollment-prompt-first
       order: 10
-    model: authentik_flows.flowstagebinding
-
-  - identifiers:
-      target: !KeyOf flow
-      stage: !KeyOf default-enrollment-prompt-second
-      order: 11
     model: authentik_flows.flowstagebinding
 
   - identifiers:
