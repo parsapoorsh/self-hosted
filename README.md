@@ -39,7 +39,7 @@ cp .env.example .env
 ./scripts/compose.sh up -d
 ```
 
-`./scripts/compose.sh` refreshes `.env.secrets`, checks domain certs, ensures `static/index.html` exists, runs compose, then `smoke-check` after `up -d`.
+`./scripts/compose.sh` refreshes `.env.secrets`, checks domain certs, ensures `static/index.html` exists, runs compose, then the Authentik admin bootstrap, the Mattermost default team, and `smoke-check` after `up -d`. Plain `docker compose up -d` skips those post-start steps.
 
 First boot can take a few minutes. Re-check anytime:
 
