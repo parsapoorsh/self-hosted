@@ -199,7 +199,8 @@ link_nexspence_admin_oidc() {
 }
 
 status=0
-if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
+up_pid=""
+if [[ "${cmd}" == "up" ]]; then
   # Bring postgres up first so Authentik/Mattermost DB roles exist before they start.
   "${COMPOSE[@]}" up -d postgres
   status=$?
@@ -209,8 +210,15 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
     ensure_app_dbs || echo "compose: WARN app DB ensure failed (continuing)" >&2
   fi
   if [[ "${status}" -eq 0 ]]; then
-    "${COMPOSE[@]}" "$@"
-    status=$?
+    if [[ "${detach}" -eq 1 ]]; then
+      "${COMPOSE[@]}" "$@"
+      status=$?
+    else
+      # Foreground up blocks until the stack stops. Run it in the background
+      # so the post-start setup can still run; its logs keep streaming.
+      "${COMPOSE[@]}" up &
+      up_pid=$!
+    fi
   fi
   # Each post-start step is independent: a slow IdP start must not skip the
   # Mattermost team bootstrap or the smoke-check.
@@ -225,6 +233,9 @@ if [[ "${cmd}" == "up" && "${detach}" -eq 1 ]]; then
     echo "compose: running smoke-check (bootstraps can take a few minutes)..."
     ./scripts/smoke-check.sh || post_status=$?
     status="${post_status}"
+  fi
+  if [[ -n "${up_pid}" ]]; then
+    wait "${up_pid}" || status=$?
   fi
 else
   "${COMPOSE[@]}" "$@"
