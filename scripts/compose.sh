@@ -198,8 +198,23 @@ link_nexspence_admin_oidc() {
   fi
 }
 
+# Each post-start step is independent: a slow IdP start must not skip the
+# Mattermost team bootstrap or the smoke-check.
+post_start() {
+  local post_status=0
+  echo "compose: authentik bootstrap (shared admin user)..."
+  ./authentik/bootstrap.sh || post_status=$?
+  echo "compose: link nexspence admin to OIDC source..."
+  link_nexspence_admin_oidc || true
+  echo "compose: mattermost bootstrap (org/team defaults)..."
+  ./mattermost/bootstrap.sh || post_status=$?
+  echo "compose: running smoke-check (bootstraps can take a few minutes)..."
+  ./scripts/smoke-check.sh || post_status=$?
+  return "${post_status}"
+}
+
 status=0
-up_pid=""
+setup_pid=""
 if [[ "${cmd}" == "up" ]]; then
   # Bring postgres up first so Authentik/Mattermost DB roles exist before they start.
   "${COMPOSE[@]}" up -d postgres
@@ -213,29 +228,18 @@ if [[ "${cmd}" == "up" ]]; then
     if [[ "${detach}" -eq 1 ]]; then
       "${COMPOSE[@]}" "$@"
       status=$?
+      if [[ "${status}" -eq 0 ]]; then
+        post_start || status=$?
+      fi
     else
-      # Foreground up blocks until the stack stops. Run it in the background
-      # so the post-start setup can still run; its logs keep streaming.
-      "${COMPOSE[@]}" up &
-      up_pid=$!
+      # Foreground up owns the terminal (Ctrl+P/Q detach keys), so run the
+      # post-start setup in parallel; the bootstraps wait for services.
+      post_start </dev/null &
+      setup_pid=$!
+      "${COMPOSE[@]}" "$@"
+      status=$?
+      wait "${setup_pid}" || status=$?
     fi
-  fi
-  # Each post-start step is independent: a slow IdP start must not skip the
-  # Mattermost team bootstrap or the smoke-check.
-  if [[ "${status}" -eq 0 ]]; then
-    post_status=0
-    echo "compose: authentik bootstrap (shared admin user)..."
-    ./authentik/bootstrap.sh || post_status=$?
-    echo "compose: link nexspence admin to OIDC source..."
-    link_nexspence_admin_oidc || true
-    echo "compose: mattermost bootstrap (org/team defaults)..."
-    ./mattermost/bootstrap.sh || post_status=$?
-    echo "compose: running smoke-check (bootstraps can take a few minutes)..."
-    ./scripts/smoke-check.sh || post_status=$?
-    status="${post_status}"
-  fi
-  if [[ -n "${up_pid}" ]]; then
-    wait "${up_pid}" || status=$?
   fi
 else
   "${COMPOSE[@]}" "$@"

@@ -6,6 +6,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# Never read the terminal: under `timeout` a tty read stops the process group
+# with SIGTTIN when this script runs from an interactive compose.sh session.
+exec </dev/null
+
 # shellcheck disable=SC1091
 set -a
 source "${ROOT}/.env"
@@ -32,7 +36,7 @@ echo "authentik-bootstrap: waiting for authentik..."
 ready=0
 for i in $(seq 1 150); do
   if timeout 20 "${COMPOSE[@]}" exec -T authentik \
-    ak shell -c '1' >/dev/null 2>&1; then
+    ak shell -c '1' </dev/null >/dev/null 2>&1; then
     ready=1
     break
   fi

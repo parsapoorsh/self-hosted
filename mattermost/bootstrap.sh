@@ -11,6 +11,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# Never read the terminal (the compose session may own it).
+exec </dev/null
+
 log() {
   echo "mattermost-bootstrap: $*" >&2
 }
