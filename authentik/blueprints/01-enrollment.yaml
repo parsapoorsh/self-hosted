@@ -1,4 +1,4 @@
-# Open self-registration (username + password + name + email), then login.
+# Open self-registration (username + password + name), then login.
 # Linked from the default identification stage so the login page shows "Sign up".
 version: 1
 metadata:
@@ -67,19 +67,6 @@ entries:
       order: 0
 
   - identifiers:
-      name: self-hosted-enrollment-field-email
-    id: prompt-field-email
-    model: authentik_stages_prompt.prompt
-    attrs:
-      field_key: email
-      label: Email
-      type: email
-      required: true
-      placeholder: Email
-      placeholder_expression: false
-      order: 1
-
-  - identifiers:
       name: self-hosted-enrollment-prompt-first
     id: default-enrollment-prompt-first
     model: authentik_stages_prompt.promptstage
@@ -96,7 +83,6 @@ entries:
     attrs:
       fields:
         - !KeyOf prompt-field-name
-        - !KeyOf prompt-field-email
 
   - identifiers:
       name: self-hosted-enrollment-user-write
@@ -104,6 +90,9 @@ entries:
     model: authentik_stages_user_write.userwritestage
     attrs:
       user_creation_mode: always_create
+      # 2026.x defaults user_type to external, which locks enrolled users out of
+      # the user interface ("Interface can only be accessed by internal users").
+      user_type: internal
 
   - identifiers:
       name: self-hosted-enrollment-user-login

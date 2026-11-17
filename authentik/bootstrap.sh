@@ -232,7 +232,7 @@ for p in OAuth2Provider.objects.all():
 print("admins group ready")
 '
 
-# Open self-registration (username + password + name + email) + Sign up on login.
+# Open self-registration (username + password + name) + Sign up on login.
 echo "authentik-bootstrap: ensuring enrollment (self-signup)"
 "${COMPOSE[@]}" exec -T authentik ak shell -c '
 from authentik.flows.models import (
@@ -277,18 +277,19 @@ p_pass2 = ensure_prompt(
 p_name = ensure_prompt(
     "self-hosted-enrollment-field-name", "name", "Name", FieldTypes.TEXT, 0
 )
-p_email = ensure_prompt(
-    "self-hosted-enrollment-field-email", "email", "Email", FieldTypes.EMAIL, 1
-)
 
 ps1, _ = PromptStage.objects.update_or_create(name="self-hosted-enrollment-prompt-first")
 ps1.fields.set([p_user, p_pass, p_pass2])
 ps2, _ = PromptStage.objects.update_or_create(name="self-hosted-enrollment-prompt-second")
-ps2.fields.set([p_name, p_email])
+ps2.fields.set([p_name])
 
+# 2026.x defaults user_type to external, which denies the user interface.
 uw, _ = UserWriteStage.objects.update_or_create(
     name="self-hosted-enrollment-user-write",
-    defaults={"user_creation_mode": UserCreationMode.ALWAYS_CREATE},
+    defaults={
+        "user_creation_mode": UserCreationMode.ALWAYS_CREATE,
+        "user_type": "internal",
+    },
 )
 ul, _ = UserLoginStage.objects.update_or_create(name="self-hosted-enrollment-user-login")
 
