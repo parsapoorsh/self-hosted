@@ -74,20 +74,20 @@ entries:
           url: !Format
             - "https://cloud.%s%s/apps/user_oidc/code"
             - !Env DOMAIN
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://cloud.%s%s/index.php/apps/user_oidc/code"
             - !Env DOMAIN
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://cloud.localhost%s/apps/user_oidc/code"
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://cloud.localhost%s/index.php/apps/user_oidc/code"
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
 
   - model: authentik_core.application
     identifiers:
@@ -140,11 +140,11 @@ entries:
           url: !Format
             - "https://mirror.%s%s/api/v1/auth/oidc/callback"
             - !Env DOMAIN
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://mirror.localhost%s/api/v1/auth/oidc/callback"
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
 
   - model: authentik_core.application
     identifiers:
@@ -197,20 +197,20 @@ entries:
           url: !Format
             - "https://chat.%s%s/signup/gitlab/complete"
             - !Env DOMAIN
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://chat.%s%s/login/gitlab/complete"
             - !Env DOMAIN
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://chat.localhost%s/signup/gitlab/complete"
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
         - matching_mode: strict
           url: !Format
             - "https://chat.localhost%s/login/gitlab/complete"
-            - !Env HTTPS_PORT_SUFFIX
+            - !Env [HTTPS_PORT_SUFFIX, ""]
 
   - model: authentik_core.application
     identifiers:
