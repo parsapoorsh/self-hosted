@@ -139,10 +139,11 @@ print(f"base_url={t.base_url} setup={Setup.get(tenant=t)} brand={b.domain} local
 echo "authentik-bootstrap: waiting for OIDC blueprints..."
 for i in $(seq 1 60); do
   if "${COMPOSE[@]}" exec -T authentik ak shell -c '
-from authentik.providers.oauth2.models import OAuth2Provider
+from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 ids = set(OAuth2Provider.objects.values_list("client_id", flat=True))
 need = {"nextcloud", "mirror", "mattermost"}
-print("ok" if need.issubset(ids) else f"missing={need-ids}")
+has_email = ScopeMapping.objects.filter(managed="self-hosted/scope-email-fallback").exists()
+print("ok" if need.issubset(ids) and has_email else f"missing={need-ids}")
 ' 2>/dev/null | tail -1 | grep -q '^ok$'; then
     echo "authentik-bootstrap: OIDC apps present"
     break
@@ -181,9 +182,12 @@ sm, _ = ScopeMapping.objects.get_or_create(
 )
 std = list(ScopeMapping.objects.filter(managed__in=[
     "goauthentik.io/providers/oauth2/scope-openid",
-    "goauthentik.io/providers/oauth2/scope-email",
     "goauthentik.io/providers/oauth2/scope-profile",
 ]))
+# Enrollment has no email prompt; this mapping falls back to username@domain.
+em = ScopeMapping.objects.filter(managed="self-hosted/scope-email-fallback").first()
+if em is None:
+    raise SystemExit("missing self-hosted/scope-email-fallback scope mapping")
 # 2026.x stores grant_types=[]; empty list rejects authorization_code as malformed.
 grants = [GrantTypes.AUTHORIZATION_CODE, GrantTypes.REFRESH_TOKEN]
 secrets = {
@@ -198,7 +202,7 @@ for p in OAuth2Provider.objects.all():
     if secrets.get(p.client_id):
         p.client_secret = secrets[p.client_id]
     p.save()
-    p.property_mappings.set(std + [sm])
+    p.property_mappings.set(std + [sm, em])
 print("signing_key=%s providers=%s grants=authorization_code+refresh_token" % (
     cert.name, OAuth2Provider.objects.count(),
 ))
