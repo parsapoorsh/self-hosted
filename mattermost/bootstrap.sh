@@ -141,8 +141,9 @@ ensure_calls_enabled() {
   local patch
   log "enabling Calls for all users (DefaultEnabled=true)"
   patch="$(mktemp)"
+  # Plugin config keys are case-sensitive ("DefaultEnabled", not "defaultenabled").
   printf '%s\n' \
-    '{"PluginSettings":{"Plugins":{"com.mattermost.calls":{"defaultenabled":true}}}}' \
+    '{"PluginSettings":{"Plugins":{"com.mattermost.calls":{"DefaultEnabled":true}}}}' \
     >"${patch}"
   chmod 644 "${patch}"
   # Write into config volume as mattermost uid so mmctl can read the file.
