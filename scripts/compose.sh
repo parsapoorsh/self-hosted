@@ -119,7 +119,7 @@ case "${cmd}" in
     ;;
 esac
 
-# App DBs are created by postgres/init only on a fresh volume. For an existing
+# App DBs are created by services/postgres/init only on a fresh volume. For an existing
 # postgres_data volume, create new app roles before services that need them start.
 ensure_app_dbs() {
   set -a
@@ -203,11 +203,11 @@ link_nexspence_admin_oidc() {
 post_start() {
   local post_status=0
   echo "compose: authentik bootstrap (shared admin user)..."
-  ./authentik/bootstrap.sh || post_status=$?
+  ./services/authentik/bootstrap.sh || post_status=$?
   echo "compose: link nexspence admin to OIDC source..."
   link_nexspence_admin_oidc || true
   echo "compose: mattermost bootstrap (org/team defaults)..."
-  ./mattermost/bootstrap.sh || post_status=$?
+  ./services/mattermost/bootstrap.sh || post_status=$?
   echo "compose: running smoke-check (bootstraps can take a few minutes)..."
   ./scripts/smoke-check.sh || post_status=$?
   return "${post_status}"
@@ -219,7 +219,7 @@ if [[ "${cmd}" == "up" ]]; then
   # Bring postgres up first so Authentik/Mattermost DB roles exist before they start.
   "${COMPOSE[@]}" up -d postgres
   status=$?
-  # Best effort: on a fresh volume postgres/init already creates the app DBs,
+  # Best effort: on a fresh volume services/postgres/init already creates the app DBs,
   # so a failure here must not stop the stack from starting.
   if [[ "${status}" -eq 0 ]]; then
     ensure_app_dbs || echo "compose: WARN app DB ensure failed (continuing)" >&2

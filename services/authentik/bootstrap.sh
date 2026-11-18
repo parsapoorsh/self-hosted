@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ensure shared admin user exists in Authentik (matches KEYCLOAK_ADMIN).
 # Uses `ak shell` inside the server container (no API token required).
-# The Django snippets live in authentik/shell/*.py and are read here.
+# The Django snippets live in services/authentik/shell/*.py and are read here.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,7 +30,7 @@ fi
 AUTH_BASE_URL="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 AUTH_HOST="auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
-PY_DIR="${ROOT}/authentik/shell"
+PY_DIR="${ROOT}/services/authentik/shell"
 
 # Fail before touching the stack when a snippet is missing, rather than
 # running an empty `ak shell -c ""`.

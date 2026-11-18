@@ -79,7 +79,7 @@ Works for Authentik, Nextcloud, Mattermost (SSO), and Nexspence UI / REST. (`KEY
 
 **Self-registration:** open `https://auth.${domain}/` and use **Sign up**.
 
-Nexspence bootstrap (every start): anonymous read, `nexspence/catalog.json` repos (hosted / proxy / group).
+Nexspence bootstrap (every start): anonymous read, `services/nexspence/catalog.json` repos (hosted / proxy / group).
 
 ## Configuration
 
@@ -167,9 +167,9 @@ docker-compose.yml
 .env / .env.example
 docs/                        # markdown sources (${domain} placeholders)
 static/                      # built HTML (gitignored)
-authentik/ nextcloud/ mattermost/ nexspence/
-nginx/ postgres/ redis/
-kiwix/ anubis/
+services/
+  anubis/ authentik/ kiwix/ mattermost/
+  nexspence/ nextcloud/ nginx/ postgres/
 scripts/                     # compose, build-static, certs, smoke
 cert/                        # TLS (gitignored)
 ```

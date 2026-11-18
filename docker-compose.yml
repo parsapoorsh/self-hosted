@@ -14,7 +14,7 @@ services:
       DOMAIN: ${DOMAIN:-example.com}
       HTTPS_PORT: ${HTTPS_PORT:-443}
     volumes:
-      - ./nginx:/etc/nginx/self-hosted:ro
+      - ./services/nginx:/etc/nginx/self-hosted:ro
       - ./static:/usr/share/nginx/html:ro
       # cert/<DOMAIN|localhost>/; rw so first start can create cert/localhost
       - ./cert:/etc/nginx/certs
@@ -35,9 +35,9 @@ services:
   anubis:
     image: ghcr.io/techarohq/anubis:latest
     env_file:
-      - ./anubis/env
+      - ./services/anubis/env
     volumes:
-      - ./anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - ./services/anubis/botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
     networks:
       - self-hosted
     restart: unless-stopped
@@ -49,12 +49,12 @@ services:
       start_period: 500ms
 
   kiwix:
-    build: ./kiwix
+    build: ./services/kiwix
     image: self-hosted-kiwix:local
     env_file:
-      - ./kiwix/env
+      - ./services/kiwix/env
     volumes:
-      - ./kiwix/files:/zim:ro
+      - ./services/kiwix/files:/zim:ro
     networks:
       - self-hosted
     restart: unless-stopped
@@ -62,17 +62,17 @@ services:
   postgres:
     image: postgres:16-alpine
     env_file:
-      - ./postgres/env
+      - ./services/postgres/env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # postgres/init on first empty volume (from .env.secrets)
+      # services/postgres/init on first empty volume (from .env.secrets)
       NEXTCLOUD_DB_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
       MATTERMOST_DB_PASSWORD: ${MATTERMOST_DB_PASSWORD}
       NEXSPENCE_DB_PASSWORD: ${NEXSPENCE_DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./services/postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - self-hosted
     restart: unless-stopped
@@ -98,7 +98,7 @@ services:
   nextcloud:
     image: nextcloud:35-fpm
     env_file:
-      - ./nextcloud/env
+      - ./services/nextcloud/env
     environment:
       POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
       # Same human admin as Authentik
@@ -112,7 +112,7 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
     volumes:
       - nextcloud_html:/var/www/html
-      - ./nextcloud/hooks:/docker-entrypoint-hooks.d:ro
+      - ./services/nextcloud/hooks:/docker-entrypoint-hooks.d:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,7 +131,7 @@ services:
     image: ghcr.io/goauthentik/server:2026.8.5
     command: server
     env_file:
-      - ./authentik/env
+      - ./services/authentik/env
     environment:
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       AUTHENTIK_POSTGRESQL__HOST: postgres
@@ -152,7 +152,7 @@ services:
     volumes:
       - authentik_data:/data
       - authentik_templates:/templates
-      - ./authentik/blueprints:/blueprints/custom:ro
+      - ./services/authentik/blueprints:/blueprints/custom:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,7 +173,7 @@ services:
     command: worker
     user: root
     env_file:
-      - ./authentik/env
+      - ./services/authentik/env
     environment:
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       AUTHENTIK_POSTGRESQL__HOST: postgres
@@ -190,7 +190,7 @@ services:
       - authentik_data:/data
       - authentik_templates:/templates
       - authentik_certs:/certs
-      - ./authentik/blueprints:/blueprints/custom:ro
+      - ./services/authentik/blueprints:/blueprints/custom:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -207,12 +207,12 @@ services:
 
   # Package registry (Nexus-compatible API). Public host is mirror.${DOMAIN}.
   nexspence:
-    build: ./nexspence
+    build: ./services/nexspence
     image: self-hosted-nexspence:local
     user: "1000:1000"
     entrypoint: ["/bin/bash", "/init/docker-entrypoint.sh"]
     env_file:
-      - ./nexspence/env
+      - ./services/nexspence/env
     environment:
       NEXSPENCE_DATABASE_DSN: postgres://nexspence:${NEXSPENCE_DB_PASSWORD}@postgres:5432/nexspence?sslmode=disable
       NEXSPENCE_HTTP_BASE_URL: https://mirror.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
@@ -232,10 +232,10 @@ services:
     volumes:
       - nexspence_blobs:/app/data/blobs
       - nexspence_secrets:/app/secrets
-      - ./nexspence/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
-      - ./nexspence/bootstrap.sh:/init/bootstrap.sh:ro
-      - ./nexspence/ensure_repos.py:/init/ensure_repos.py:ro
-      - ./nexspence/catalog.json:/init/catalog.json:ro
+      - ./services/nexspence/docker-entrypoint.sh:/init/docker-entrypoint.sh:ro
+      - ./services/nexspence/bootstrap.sh:/init/bootstrap.sh:ro
+      - ./services/nexspence/ensure_repos.py:/init/ensure_repos.py:ro
+      - ./services/nexspence/catalog.json:/init/catalog.json:ro
       # Created by scripts/compose.sh (openssl); used for Alpine repo signing
       - ./cert/alpine.key:/init/alpine.key:ro
     depends_on:
@@ -263,7 +263,7 @@ services:
   mattermost:
     image: mattermost/mattermost-enterprise-edition:12.0.1
     env_file:
-      - ./mattermost/env
+      - ./services/mattermost/env
     environment:
       DOMAIN: ${DOMAIN:-example.com}
       MM_SERVICESETTINGS_SITEURL: https://chat.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
