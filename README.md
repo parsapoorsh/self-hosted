@@ -135,6 +135,18 @@ Localhost tree:
 ./scripts/compose.sh down
 ```
 
+### Volume backups
+
+```bash
+./scripts/volumes-backup.sh /mnt/backups                  # every declared volume
+./scripts/volumes-backup.sh /mnt/backups mattermost_data  # one volume
+
+./scripts/volumes-restore.sh /mnt/backups/shbk-2026-11-18_14-30-41/
+./scripts/volumes-restore.sh /mnt/backups/shbk-2026-11-18_14-30-41/mattermost_*
+```
+
+Each backup run creates `shbk-YYYY-MM-DD_HH-MM-SS/` under the output directory with one `.tar.gz` per volume (gzip `-1`). Data is streamed through a helper container, so no temporary copies are written. Restore accepts `.tar`, `.tar.gz`, `.tar.xz`, a directory of archives, or a glob. Stop services before restoring; `--clear` empties a volume first, and `--force` overrides the running-container check.
+
 ### Authentik users
 
 - **Self-signup:** `https://auth.${domain}/` → Sign up  
@@ -170,7 +182,7 @@ static/                      # built HTML (gitignored)
 services/
   anubis/ authentik/ kiwix/ mattermost/
   nexspence/ nextcloud/ nginx/ postgres/
-scripts/                     # compose, build-static, certs, smoke
+scripts/                     # compose, build-static, certs, backups, smoke
 cert/                        # TLS (gitignored)
 ```
 
