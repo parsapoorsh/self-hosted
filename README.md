@@ -53,7 +53,7 @@ Docker publishes these through its own iptables rules, so they can bypass ufw's 
 
 ```bash
 cp .env.example .env
-# Set DOMAIN=${domain}, ORG_NAME, POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD
+# Set DOMAIN=${domain}, ORG_NAME, POSTGRES_PASSWORD, ADMIN_PASSWORD
 
 ./scripts/self-signed.sh          # or real certs in cert/${domain}/
 ./scripts/build-static.sh         # docs -> static/ (compose also builds if missing)
@@ -72,10 +72,10 @@ First boot can take a few minutes. Re-check anytime:
 
 From `.env`:
 
-- **Username:** `KEYCLOAK_ADMIN` (default `admin`)  
-- **Password:** `KEYCLOAK_ADMIN_PASSWORD`  
+- **Username:** `ADMIN_USERNAME` (default `admin`)  
+- **Password:** `ADMIN_PASSWORD`  
 
-Works for Authentik, Nextcloud, Mattermost (SSO), and Nexspence UI / REST. (`KEYCLOAK_*` names are historical; the IdP is Authentik.)
+Works for Authentik, Nextcloud, Mattermost (SSO), and Nexspence UI / REST.
 
 **Self-registration:** open `https://auth.${domain}/` and use **Sign up**.
 
@@ -90,7 +90,7 @@ Nexspence bootstrap (every start): anonymous read, `services/nexspence/catalog.j
 | `DOMAIN` | Apex domain (`${domain}`) |
 | `ORG_NAME` | Mattermost organization / default team name |
 | `POSTGRES_PASSWORD` | Postgres superuser |
-| `KEYCLOAK_ADMIN` / `_PASSWORD` | Shared app admin |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Shared app admin |
 | `HTTP_PORT` / `HTTPS_PORT` | Edge publish + listen ports (default 80 / 443) |
 
 ### Derived secrets
@@ -189,7 +189,7 @@ cert/                        # TLS (gitignored)
 ## Notes
 
 - Do not commit `.env` or `.env.secrets`.  
-- Changing `KEYCLOAK_ADMIN_PASSWORD` regenerates OIDC secrets on the next compose run.  
+- Changing `ADMIN_PASSWORD` regenerates OIDC secrets on the next compose run.  
 - Nexspence is a Go binary + shared Postgres (`nexspence` database); blobs in the `nexspence_blobs` volume.  
 - If Cloudflare sits in front, use **Full (strict)** SSL so HTTP->HTTPS at origin does not loop.  
 - Migration from Authelia: stop the stack, `./scripts/compose.sh up -d` (new `authentik` DB). Old Authelia file users are not imported; use Sign up or the admin UI.  

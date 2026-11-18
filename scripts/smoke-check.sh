@@ -23,8 +23,8 @@ set +a
 DOMAIN="${DOMAIN:-example.com}"
 HTTP_PORT="${HTTP_PORT:-80}"
 HTTPS_PORT="${HTTPS_PORT:-443}"
-ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
-ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?}"
+ADMIN_USER="${ADMIN_USERNAME:-admin}"
+ADMIN_PASS="${ADMIN_PASSWORD:?}"
 
 # compose.yml requires CALLS_ICE_HOST_OVERRIDE for interpolation (same as compose.sh).
 if [[ -z "${CALLS_ICE_HOST_OVERRIDE:-}" ]]; then

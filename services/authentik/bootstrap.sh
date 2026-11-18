@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ensure shared admin user exists in Authentik (matches KEYCLOAK_ADMIN).
+# Ensure shared admin user exists in Authentik (matches ADMIN_USERNAME).
 # Uses `ak shell` inside the server container (no API token required).
 # The Django snippets live in services/authentik/shell/*.py and are read here.
 set -euo pipefail
@@ -17,8 +17,8 @@ source "${ROOT}/.env"
 source "${ROOT}/.env.secrets"
 set +a
 
-ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
-ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:?}"
+ADMIN_USER="${ADMIN_USERNAME:-admin}"
+ADMIN_PASS="${ADMIN_PASSWORD:?}"
 ADMIN_EMAIL="${AUTH_ADMIN_EMAIL:-${ADMIN_USER}@${DOMAIN:-example.com}}"
 DOMAIN="${DOMAIN:-example.com}"
 HTTPS_PORT="${HTTPS_PORT:-443}"

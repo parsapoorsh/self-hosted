@@ -177,7 +177,7 @@ link_nexspence_admin_oidc() {
   # shellcheck disable=SC1091
   source "${ROOT}/.env"
   set +a
-  local user="${KEYCLOAK_ADMIN:-admin}"
+  local user="${ADMIN_USERNAME:-admin}"
   local email="${user}@${DOMAIN:-localhost}"
   local out
   out="$("${COMPOSE[@]}" exec -T postgres \

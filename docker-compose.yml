@@ -112,8 +112,8 @@ services:
     environment:
       POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
       # Same human admin as Authentik
-      NEXTCLOUD_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
-      NEXTCLOUD_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${ADMIN_USERNAME:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       # Both names; do not set OVERWRITEHOST (breaks cloud.localhost).
       NEXTCLOUD_TRUSTED_DOMAINS: cloud.${DOMAIN:-example.com} cloud.localhost
       OVERWRITECLIURL: ${NEXTCLOUD_OVERWRITE_CLI_URL:-https://cloud.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}}
@@ -150,9 +150,9 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTH_DB_PASSWORD}
-      AUTHENTIK_BOOTSTRAP_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${ADMIN_PASSWORD}
       AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN}
-      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTH_ADMIN_EMAIL:-${KEYCLOAK_ADMIN:-admin}@${DOMAIN:-example.com}}
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTH_ADMIN_EMAIL:-${ADMIN_USERNAME:-admin}@${DOMAIN:-example.com}}
       # Public portal URL (backfills Tenant.base_url on cold start).
       AUTHENTIK_WEB__BASE_URL: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       # Blueprint env for OIDC client secrets + redirect hosts
@@ -234,10 +234,10 @@ services:
       NEXSPENCE_HTTP_BASE_URL: https://mirror.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}
       NEXSPENCE_AUTH_JWT_SECRET: ${NEXSPENCE_AUTH_JWT_SECRET}
       # Same human admin as Authentik (bootstrap + basic auth for package/API clients)
-      NEXSPENCE_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      NEXSPENCE_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      NEXSPENCE_ADMIN_USER: ${KEYCLOAK_ADMIN:-admin}
-      NEXSPENCE_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      NEXSPENCE_BOOTSTRAP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      NEXSPENCE_BOOTSTRAP_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      NEXSPENCE_ADMIN_USER: ${ADMIN_USERNAME:-admin}
+      NEXSPENCE_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       # Authentik OIDC (native UI SSO). Per-app issuer under /application/o/<slug>/.
       NEXSPENCE_OIDC_ISSUER: https://auth.${DOMAIN:-example.com}${HTTPS_PORT_SUFFIX:-}/application/o/mirror/
       NEXSPENCE_OIDC_CLIENT_ID: ${MIRROR_OIDC_CLIENT_ID:-mirror}
