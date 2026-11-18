@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Ensure shared admin user exists in Authentik (matches KEYCLOAK_ADMIN).
 # Uses `ak shell` inside the server container (no API token required).
+# The Django snippets live in authentik/shell/*.py and are read here.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,6 +30,25 @@ fi
 AUTH_BASE_URL="https://auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 AUTH_HOST="auth.${DOMAIN}${HTTPS_PORT_SUFFIX}"
 COMPOSE=(docker compose --env-file .env --env-file .env.secrets)
+PY_DIR="${ROOT}/authentik/shell"
+
+# Fail before touching the stack when a snippet is missing, rather than
+# running an empty `ak shell -c ""`.
+SNIPPETS=(
+  upsert_admin.py
+  brand_ready.py
+  tenant_brand.py
+  oidc_ready.py
+  oauth2_providers.py
+  admins_group.py
+  enrollment.py
+)
+for snippet in "${SNIPPETS[@]}"; do
+  if [[ ! -r "${PY_DIR}/${snippet}" ]]; then
+    echo "authentik-bootstrap: missing ${PY_DIR}/${snippet}" >&2
+    exit 1
+  fi
+done
 
 # Probe the Django app (DB + migrations + config), not just the health string:
 # on a cold volume the HTTP health check can pass briefly before `ak` works.
@@ -52,47 +72,15 @@ echo "authentik-bootstrap: upsert user ${ADMIN_USER}"
   -e ADMIN_USER="${ADMIN_USER}" \
   -e ADMIN_PASS="${ADMIN_PASS}" \
   -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
-  authentik ak shell -c '
-import os
-from authentik.core.models import User, Group
-
-username = os.environ["ADMIN_USER"]
-password = os.environ["ADMIN_PASS"]
-email = os.environ["ADMIN_EMAIL"]
-
-user, created = User.objects.get_or_create(
-    username=username,
-    defaults={
-        "name": "Admin",
-        "email": email,
-        "is_active": True,
-        "type": "internal",
-        "path": "users",
-    },
-)
-user.name = user.name or "Admin"
-user.email = email
-user.is_active = True
-user.set_password(password)
-user.save()
-
-# Superuser group (Authentik Admins)
-group = Group.objects.filter(name="authentik Admins").first()
-if group is not None:
-    group.users.add(user)
-
-print(f"authentik-bootstrap: user={username} created={created} pk={user.pk}")
-'
+  authentik ak shell -c "$(cat "${PY_DIR}/upsert_admin.py")"
 
 # Tenant base_url + brand domain (fixes "base URL has not been configured").
 # The default brand is created by an Authentik blueprint; on a cold volume it
 # can land after the health check, so wait for it before patching.
 echo "authentik-bootstrap: waiting for default brand..."
 for i in $(seq 1 60); do
-  if "${COMPOSE[@]}" exec -T authentik ak shell -c '
-from authentik.brands.models import Brand
-raise SystemExit(0 if Brand.objects.filter(default=True).exists() else 1)
-' >/dev/null 2>&1; then
+  if "${COMPOSE[@]}" exec -T authentik \
+    ak shell -c "$(cat "${PY_DIR}/brand_ready.py")" >/dev/null 2>&1; then
     break
   fi
   if [[ "$i" -eq 60 ]]; then
@@ -105,58 +93,14 @@ echo "authentik-bootstrap: base_url=${AUTH_BASE_URL}"
 "${COMPOSE[@]}" exec -T \
   -e AUTH_BASE_URL="${AUTH_BASE_URL}" \
   -e AUTH_HOST="${AUTH_HOST}" \
-  authentik ak shell -c '
-import os
-from authentik.tenants.models import Tenant
-from authentik.brands.models import Brand
-from authentik.core.apps import Setup
-
-base = os.environ["AUTH_BASE_URL"]
-host = os.environ["AUTH_HOST"]
-
-t = Tenant.objects.get(schema_name="public")
-t.base_url = base
-t.save()
-# setup=True means first-run wizard is finished (False redirects to /setup).
-Setup.set(True, tenant=t)
-
-# Default brand matches public Host (with non-default port when set).
-b = Brand.objects.get(default=True)
-b.domain = host
-b.save()
-
-# Local TLS brand for auth.localhost (and :port).
-local_host = "auth.localhost"
-if ":" in host:
-    local_host = "auth.localhost:" + host.split(":", 1)[1]
-lb, created = Brand.objects.get_or_create(
-    domain=local_host,
-    defaults={
-        "default": False,
-        "branding_title": b.branding_title,
-        "flow_authentication": b.flow_authentication,
-        "flow_invalidation": b.flow_invalidation,
-        "flow_user_settings": b.flow_user_settings,
-    },
-)
-if not created:
-    lb.flow_authentication = b.flow_authentication
-    lb.flow_invalidation = b.flow_invalidation
-    lb.flow_user_settings = b.flow_user_settings
-    lb.save()
-print(f"base_url={t.base_url} setup={Setup.get(tenant=t)} brand={b.domain} local={lb.domain}")
-'
+  authentik ak shell -c "$(cat "${PY_DIR}/tenant_brand.py")"
 
 # Wait for custom blueprints (OIDC apps) to apply.
 echo "authentik-bootstrap: waiting for OIDC blueprints..."
 for i in $(seq 1 60); do
-  if "${COMPOSE[@]}" exec -T authentik ak shell -c '
-from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
-ids = set(OAuth2Provider.objects.values_list("client_id", flat=True))
-need = {"nextcloud", "mirror", "mattermost"}
-has_email = ScopeMapping.objects.filter(managed="self-hosted/scope-email-fallback").exists()
-print("ok" if need.issubset(ids) and has_email else f"missing={need-ids}")
-' 2>/dev/null | tail -1 | grep -q '^ok$'; then
+  if "${COMPOSE[@]}" exec -T authentik \
+    ak shell -c "$(cat "${PY_DIR}/oidc_ready.py")" 2>/dev/null \
+    | tail -1 | grep -q '^ok$'; then
     echo "authentik-bootstrap: OIDC apps present"
     break
   fi
@@ -172,183 +116,16 @@ echo "authentik-bootstrap: ensuring RS256 signing keys + grant types"
   -e NC_SECRET="${OIDC_CLIENT_SECRET}" \
   -e MIRROR_SECRET="${MIRROR_OIDC_CLIENT_SECRET}" \
   -e MM_SECRET="${MATTERMOST_OIDC_CLIENT_SECRET}" \
-  authentik ak shell -c '
-import os
-from authentik.crypto.models import CertificateKeyPair
-from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping, GrantTypes
-
-cert = CertificateKeyPair.objects.filter(name__icontains="Self-signed").first()
-if cert is None:
-    cert = CertificateKeyPair.objects.filter(name__icontains="JWT").first()
-if cert is None:
-    raise SystemExit("no signing certificate found")
-
-sm, _ = ScopeMapping.objects.get_or_create(
-    managed="goauthentik.io/providers/oauth2/scope-username-gitlab",
-    defaults={
-        "name": "Authentik self-hosted GitLab username",
-        "scope_name": "profile",
-        "description": "Expose username for Mattermost GitLab OIDC",
-        "expression": "return {\"username\": request.user.username, \"preferred_username\": request.user.username}",
-    },
-)
-std = list(ScopeMapping.objects.filter(managed__in=[
-    "goauthentik.io/providers/oauth2/scope-openid",
-    "goauthentik.io/providers/oauth2/scope-profile",
-]))
-# Enrollment has no email prompt; this mapping falls back to username@domain.
-em = ScopeMapping.objects.filter(managed="self-hosted/scope-email-fallback").first()
-if em is None:
-    raise SystemExit("missing self-hosted/scope-email-fallback scope mapping")
-# 2026.x stores grant_types=[]; empty list rejects authorization_code as malformed.
-grants = [GrantTypes.AUTHORIZATION_CODE, GrantTypes.REFRESH_TOKEN]
-secrets = {
-    "nextcloud": os.environ.get("NC_SECRET") or "",
-    "mirror": os.environ.get("MIRROR_SECRET") or "",
-    "mattermost": os.environ.get("MM_SECRET") or "",
-}
-for p in OAuth2Provider.objects.all():
-    p.signing_key = cert
-    p.include_claims_in_id_token = True
-    p.grant_types = grants
-    if secrets.get(p.client_id):
-        p.client_secret = secrets[p.client_id]
-    p.save()
-    p.property_mappings.set(std + [sm, em])
-print("signing_key=%s providers=%s grants=authorization_code+refresh_token" % (
-    cert.name, OAuth2Provider.objects.count(),
-))
-'
+  authentik ak shell -c "$(cat "${PY_DIR}/oauth2_providers.py")"
 
 # Nexspence maps Authentik group "admins" -> nx-admin. Ensure it exists.
 echo "authentik-bootstrap: ensuring admins group"
 "${COMPOSE[@]}" exec -T \
   -e ADMIN_USER="${ADMIN_USER}" \
-  authentik ak shell -c '
-import os
-from authentik.core.models import User, Group
-from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
-
-g, _ = Group.objects.get_or_create(name="admins")
-u = User.objects.filter(username=os.environ["ADMIN_USER"]).first()
-if u is not None:
-    g.users.add(u)
-
-gm, _ = ScopeMapping.objects.get_or_create(
-    managed="self-hosted/scope-groups",
-    defaults={
-        "name": "self-hosted groups",
-        "scope_name": "groups",
-        "description": "Group names for Nexspence admin mapping",
-        "expression": "return [group.name for group in request.user.ak_groups.all()]",
-    },
-)
-for p in OAuth2Provider.objects.all():
-    p.property_mappings.add(gm)
-print("admins group ready")
-'
+  authentik ak shell -c "$(cat "${PY_DIR}/admins_group.py")"
 
 # Open self-registration (username + password + name) + Sign up on login.
 echo "authentik-bootstrap: ensuring enrollment (self-signup)"
-"${COMPOSE[@]}" exec -T authentik ak shell -c '
-from authentik.flows.models import (
-    Flow,
-    FlowDesignation,
-    FlowAuthenticationRequirement,
-    FlowStageBinding,
-)
-from authentik.policies.expression.models import ExpressionPolicy
-from authentik.stages.prompt.models import Prompt, PromptStage, FieldTypes
-from authentik.stages.user_write.models import UserWriteStage, UserCreationMode
-from authentik.stages.user_login.models import UserLoginStage
-from authentik.stages.identification.models import IdentificationStage
-
-def ensure_prompt(name, key, label, ftype, order=0, required=True):
-    p, _ = Prompt.objects.update_or_create(
-        name=name,
-        defaults={
-            "field_key": key,
-            "label": label,
-            "type": ftype,
-            "required": required,
-            "placeholder": label,
-            "placeholder_expression": False,
-            "order": order,
-        },
-    )
-    return p
-
-p_user = ensure_prompt(
-    "self-hosted-enrollment-field-username", "username", "Username", FieldTypes.USERNAME, 0
-)
-p_pass = ensure_prompt(
-    "self-hosted-enrollment-field-password", "password", "Password", FieldTypes.PASSWORD, 0
-)
-p_pass2 = ensure_prompt(
-    "self-hosted-enrollment-field-password-repeat",
-    "password_repeat",
-    "Password (repeat)",
-    FieldTypes.PASSWORD,
-    1,
-)
-# Display name is hidden and copied from the username, so signup asks for the
-# name once (on the same page as the password).
-p_name = ensure_prompt(
-    "self-hosted-enrollment-field-name", "name", "Name", FieldTypes.HIDDEN, 2, required=False
-)
-# Hidden fields send their placeholder as the value; the policy fills the name.
-p_name.placeholder = ""
-p_name.placeholder_expression = False
-p_name.initial_value = ""
-p_name.initial_value_expression = False
-p_name.save()
-
-name_policy, _ = ExpressionPolicy.objects.update_or_create(
-    name="self-hosted-enrollment-name-from-username",
-    defaults={
-        "expression": (
-            "prompt_data = request.context.get(\"prompt_data\", {})\n"
-            "if not prompt_data.get(\"name\"):\n"
-            "    prompt_data[\"name\"] = prompt_data.get(\"username\", \"\")\n"
-            "return True"
-        ),
-    },
-)
-
-ps1, _ = PromptStage.objects.update_or_create(name="self-hosted-enrollment-prompt-first")
-ps1.fields.set([p_user, p_pass, p_pass2, p_name])
-ps1.validation_policies.set([name_policy])
-
-# 2026.x defaults user_type to external, which denies the user interface.
-uw, _ = UserWriteStage.objects.update_or_create(
-    name="self-hosted-enrollment-user-write",
-    defaults={
-        "user_creation_mode": UserCreationMode.ALWAYS_CREATE,
-        "user_type": "internal",
-    },
-)
-ul, _ = UserLoginStage.objects.update_or_create(name="self-hosted-enrollment-user-login")
-
-flow, _ = Flow.objects.update_or_create(
-    slug="default-enrollment-flow",
-    defaults={
-        "name": "Self-hosted enrollment",
-        "title": "Create an account",
-        "designation": FlowDesignation.ENROLLMENT,
-        "authentication": FlowAuthenticationRequirement.REQUIRE_UNAUTHENTICATED,
-    },
-)
-FlowStageBinding.objects.filter(target=flow).delete()
-# Old second prompt stage (separate name page) is no longer used.
-PromptStage.objects.filter(name="self-hosted-enrollment-prompt-second").delete()
-for order, stage in ((10, ps1), (20, uw), (100, ul)):
-    FlowStageBinding.objects.create(target=flow, stage=stage, order=order)
-
-ident = IdentificationStage.objects.get(name="default-authentication-identification")
-ident.user_fields = ["username", "email"]
-ident.enrollment_flow = flow
-ident.save()
-print("signup ready: /if/flow/default-enrollment-flow/")
-'
+"${COMPOSE[@]}" exec -T authentik ak shell -c "$(cat "${PY_DIR}/enrollment.py")"
 
 echo "authentik-bootstrap: done"
