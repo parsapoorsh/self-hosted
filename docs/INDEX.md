@@ -9,7 +9,6 @@ page_title: Self-hosted * ${domain}
 # Self-hosted on **${domain}**
 
 Authentik SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
-</md-center>
 
 ---
 
@@ -38,3 +37,4 @@ Authentik SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 ## Quick links
 
 - PyPI simple: [https://mirror.${domain}${https_port_suffix}/repository/pypi/simple/](https://mirror.${domain}${https_port_suffix}/repository/pypi/simple/)
+</md-center>
