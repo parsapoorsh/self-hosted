@@ -7,7 +7,8 @@
 #
 # PATH may be one archive, a directory containing archives, or a glob such as
 # backup/shbk-2026-11-18_14-30-41/mattermost_*. A directory restores every
-# .tar/.tar.gz/.tar.xz file directly inside it and ignores other files.
+# .tar/.tar.gz/.tar.xz file under it and ignores other files. Pointing at an
+# output directory with several snapshots fails on duplicate volumes.
 #
 # Stop the services that use a volume before restoring it. The script refuses
 # to restore a volume mounted by a running container unless --force is given.
@@ -80,8 +81,9 @@ glob. Archives are matched to volumes by filename:
   ${PROJECT}_mattermost_data.tar -> volume ${PROJECT}_mattermost_data
 
 Only one archive per volume may be given; duplicates are rejected before
-anything is restored. A directory restores all supported archives directly
-inside it and ignores everything else.
+anything is restored. A directory is searched recursively for supported
+archives and ignores everything else. An output directory with more than
+one snapshot therefore fails on duplicate volumes; pass one shbk-* folder.
 
 Options:
   --clear   Remove the volume's current contents before extracting
@@ -152,12 +154,12 @@ add_directory() {
     archives+=("${path}")
     found=1
   done < <(
-    find "${dir}" -mindepth 1 -maxdepth 1 -type f \
+    find "${dir}" -mindepth 1 -type f \
       \( -name '*.tar' -o -name '*.tar.gz' -o -name '*.tar.xz' \) \
       -print0 | sort -z
   )
   if [[ "${found}" -eq 0 ]]; then
-    die "no .tar/.tar.gz/.tar.xz files in ${dir}"
+    die "no .tar/.tar.gz/.tar.xz files under ${dir}"
   fi
 }
 
@@ -223,6 +225,19 @@ for i in "${!restore_volumes[@]}"; do
     && [[ -n "$(docker ps -q --filter "volume=${volume}")" ]]; then
     die "${volume} is mounted by a running container;" \
       "stop it or pass --force"
+  fi
+
+  # Label a recreated volume like Compose does, so the next `up` does not
+  # warn that it was not created by Docker Compose.
+  if ! docker volume inspect "${volume}" >/dev/null 2>&1; then
+    volume_key="${volume#"${PROJECT}_"}"
+    echo "restore: creating volume ${volume}"
+    if ! docker volume create \
+      --label "com.docker.compose.project=${PROJECT}" \
+      --label "com.docker.compose.volume=${volume_key}" \
+      "${volume}" >/dev/null; then
+      die "cannot create volume ${volume}"
+    fi
   fi
 
   echo "restore: ${file} -> ${volume}"
