@@ -64,6 +64,9 @@ services:
       - ./services/kiwix/files:/zim:ro
     networks:
       - self-hosted
+    depends_on:
+      nginx:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
@@ -121,6 +124,8 @@ services:
       - nextcloud_html:/var/www/html
       - ./services/nextcloud/hooks:/docker-entrypoint-hooks.d:ro
     depends_on:
+      nginx:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -161,6 +166,8 @@ services:
       - authentik_templates:/templates
       - ./services/authentik/blueprints:/blueprints/custom:ro
     depends_on:
+      nginx:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
@@ -199,6 +206,8 @@ services:
       - authentik_certs:/certs
       - ./services/authentik/blueprints:/blueprints/custom:ro
     depends_on:
+      nginx:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
@@ -246,6 +255,8 @@ services:
       # Created by scripts/compose.sh (openssl); used for Alpine repo signing
       - ./cert/alpine.key:/init/alpine.key:ro
     depends_on:
+      nginx:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       authentik:
@@ -306,6 +317,8 @@ services:
       - mattermost_client_plugins:/mattermost/client/plugins
       - mattermost_bleve:/mattermost/bleve-indexes
     depends_on:
+      nginx:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       authentik:
