@@ -165,3 +165,6 @@ cert/
 
 # NGINX static site
 /static
+
+# Volumes backup
+/backup
