@@ -136,6 +136,11 @@ md-center,md-subtitle,md-invisible,md-left,md-right{
   display:block;
 }
 md-center{text-align:center}
+/* Tables are block boxes; text-align does not move them. */
+md-center > table{
+  margin-left:auto;
+  margin-right:auto;
+}
 md-center img{
   /* Block + auto sides so width=% images stay centered. */
   display:block;
