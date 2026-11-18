@@ -28,6 +28,27 @@ Package traffic (`/repository/`, `/v2/`) uses Nexspence basic auth or anonymous 
 - OpenSSL (cert scripts)  
 - Python venv for landing pages: `venv/` + `docs/compiler/requirements.txt`  
 
+## Firewall
+
+Only these host ports are published. Postgres, Redis, Authentik, and the apps stay on the Compose network.
+
+| Port | Proto | Purpose |
+|------|-------|---------|
+| `HTTP_PORT` (80) | TCP | HTTP edge; 302 redirect to HTTPS |
+| `HTTPS_PORT` (443) | TCP | Public HTTPS edge for every `*.${domain}` vhost |
+| `CALLS_PORT` (8443) | UDP + TCP | Mattermost Calls media (open only if you use calls) |
+
+```bash
+sudo ufw allow 80/tcp     # HTTP_PORT
+sudo ufw allow 443/tcp    # HTTPS_PORT
+sudo ufw allow 8443/udp   # CALLS_PORT - Mattermost Calls
+sudo ufw allow 8443/tcp   # CALLS_PORT - Mattermost Calls
+```
+
+Use your `.env` values in place of the defaults when `HTTP_PORT`, `HTTPS_PORT`, or `CALLS_PORT` are overridden. Skip the `8443` rules when Calls is unused.
+
+Docker publishes these through its own iptables rules, so they can bypass ufw's INPUT chain. To enforce the rules, filter the `DOCKER-USER` chain as well.
+
 ## Quick start
 
 ```bash
