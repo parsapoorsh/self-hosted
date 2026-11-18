@@ -89,7 +89,7 @@ case "$1" in
     ;;
 esac
 
-OUT_DIR="$1"
+OUT_ARG="$1"
 shift
 
 if ! valid_volume_name "${PROJECT}"; then
@@ -129,26 +129,36 @@ for volume in "${volumes[@]}"; do
   fi
 done
 
-mkdir -p "${OUT_DIR}"
-OUT_DIR="$(cd "${OUT_DIR}" && pwd)"
-DEST="${OUT_DIR}/shbk-$(date +%Y-%m-%d_%H-%M-%S)"
+mkdir -p "${OUT_ARG}"
+OUT_DIR="$(cd "${OUT_ARG}" && pwd)"
+STAMP="$(date +%Y-%m-%d_%H-%M-%S)"
+DEST="${OUT_DIR}/shbk-${STAMP}"
+
+# Echo paths the way the caller typed them instead of the absolute tree.
+DISPLAY_DIR="${OUT_ARG}"
+while [[ "${DISPLAY_DIR}" == */ && "${DISPLAY_DIR}" != "/" ]]; do
+  DISPLAY_DIR="${DISPLAY_DIR%/}"
+done
+DISPLAY_DEST="${DISPLAY_DIR%/}/shbk-${STAMP}"
+
 if ! mkdir "${DEST}"; then
-  echo "backup: cannot create ${DEST}" >&2
+  echo "backup: cannot create ${DISPLAY_DEST}" >&2
   exit 1
 fi
 
-echo "backup: project=${PROJECT} dest=${DEST}"
+echo "backup: project=${PROJECT} dest=${DISPLAY_DEST}"
 
 for volume in "${volumes[@]}"; do
   short="${volume#"${PROJECT}_"}"
   file="${DEST}/${short}.tar.gz"
+  display_file="${DISPLAY_DEST}/${short}.tar.gz"
 
   if [[ -n "$(docker ps -q --filter "volume=${volume}")" ]]; then
     echo "backup: warning: ${volume} is mounted by a running container;" \
       "the archive may be inconsistent" >&2
   fi
 
-  echo "backup: ${volume} -> ${file}"
+  echo "backup: ${volume} -> ${display_file}"
   # tar -> host gzip -> file. pipefail removes a partial file on failure.
   if ! docker run --rm --volume "${volume}:/source:ro" "${IMAGE}" \
     tar -C /source -cf - . | gzip "-${GZIP_LEVEL}" >"${file}"; then
@@ -156,7 +166,7 @@ for volume in "${volumes[@]}"; do
     echo "backup: failed for ${volume}" >&2
     exit 1
   fi
-  echo "backup: wrote $(du -h "${file}" | cut -f1) ${file}"
+  echo "backup: wrote $(du -h "${file}" | cut -f1) ${display_file}"
 done
 
-echo "backup: done (${#volumes[@]} volume(s)) -> ${DEST}"
+echo "backup: done (${#volumes[@]} volume(s)) -> ${DISPLAY_DEST}"
