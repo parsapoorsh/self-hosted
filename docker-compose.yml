@@ -28,8 +28,8 @@ services:
           - auth.${DOMAIN:-example.com}
           - auth.localhost
     depends_on:
-      - anubis
-      - authentik
+      anubis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       # Internal landing backend (:8080); does not touch TLS or upstreams.
