@@ -31,6 +31,13 @@ services:
       - anubis
       - authentik
     restart: unless-stopped
+    healthcheck:
+      # Internal landing backend (:8080); does not touch TLS or upstreams.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/generate_204"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   anubis:
     image: ghcr.io/techarohq/anubis:latest

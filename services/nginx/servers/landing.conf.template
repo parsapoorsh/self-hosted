@@ -6,6 +6,12 @@ server {
 
     include /etc/nginx/self-hosted/snippets/backend-realip.conf;
 
+    # Internal Docker health probe. Plain HTTP on the Anubis backend port.
+    location = /generate_204 {
+        access_log off;
+        return 204;
+    }
+
     location / {
         root /usr/share/nginx/html;
         index index.html;
