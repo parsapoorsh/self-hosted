@@ -4,7 +4,7 @@
 # The Django snippets live in services/authentik/shell/*.py and are read here.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 
 # Never read the terminal: under `timeout` a tty read stops the process group

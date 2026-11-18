@@ -8,7 +8,7 @@
 # Called from compose.sh after `up -d`. Safe to re-run.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 
 # Never read the terminal (the compose session may own it).
