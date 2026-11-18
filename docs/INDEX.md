@@ -17,7 +17,6 @@ Authentik SSO * Nextcloud * Mattermost * Nexspence package mirrors * Kiwix
 | Guide | What it covers |
 |-------|----------------|
 | **[Mirror](mirror.html)** | Cargo, pip, Docker, npm, Go, NuGet, Alpine, Hugging Face, and more |
-| **[README](readme.html)** | Install the stack, TLS, SSO, day-to-day ops |
 
 ---
 
